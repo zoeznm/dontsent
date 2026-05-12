@@ -3455,6 +3455,10 @@ def bootstrap(app, config):
         let stylePromptIndex = 0;
         let chatMessages = [];
         let contextSummary = "";
+        let chatBusy = false;
+        let chatInputComposing = false;
+        let lastChatSubmitText = "";
+        let lastChatSubmitAt = 0;
         let hasAppliedMode = false;
 
         const modes = {
@@ -4135,17 +4139,48 @@ def bootstrap(app, config):
             return "오케이, 이건 그냥 답장 문제가 아니라 온도 조절 문제네. 이 맥락으로 다시 짜면 더 자연스러움.";
         }
 
+        function resetChatInputHeight() {
+            chatInput.value = "";
+            chatInput.style.height = "auto";
+        }
+
+        function isDuplicateTailSend(text, now = Date.now()) {
+            return Boolean(
+                text
+                && lastChatSubmitText
+                && now - lastChatSubmitAt < 1400
+                && text.length <= 2
+                && lastChatSubmitText.endsWith(text)
+            );
+        }
+
+        function pushAssistantMessage(text) {
+            const clean = (text || "").trim();
+            if (!clean) return;
+            const last = chatMessages[chatMessages.length - 1];
+            if (last?.role === "assistant" && last.text === clean) return;
+            chatMessages.push({ role: "assistant", text: clean });
+        }
+
         async function sendConferenceMessage() {
             const text = chatInput.value.trim();
             if (!text) {
                 chatInput.focus();
                 return;
             }
-            chatMessages.push({ role: "user", text });
-            chatInput.value = "";
-            chatInput.style.height = "auto";
-            renderChat();
+            if (isDuplicateTailSend(text)) {
+                resetChatInputHeight();
+                return;
+            }
+            if (chatBusy) return;
+
+            chatBusy = true;
             chatSend.disabled = true;
+            lastChatSubmitText = text;
+            lastChatSubmitAt = Date.now();
+            chatMessages.push({ role: "user", text });
+            resetChatInputHeight();
+            renderChat();
 
             try {
                 const response = await fetch("/api/chat", {
@@ -4162,10 +4197,11 @@ def bootstrap(app, config):
                 const result = await response.json();
                 if (!result.reply) throw new Error("bad chat response");
                 contextSummary = result.contextSummary || contextSummary;
-                chatMessages.push({ role: "assistant", text: result.reply });
+                pushAssistantMessage(result.reply);
             } catch (error) {
-                chatMessages.push({ role: "assistant", text: localChatReply(text) });
+                pushAssistantMessage(localChatReply(text));
             } finally {
+                chatBusy = false;
                 chatSend.disabled = false;
                 renderChat();
                 renderContextChip();
@@ -4750,8 +4786,17 @@ def bootstrap(app, config):
             chatInput.style.height = `${chatInput.scrollHeight}px`;
         });
 
+        chatInput.addEventListener("compositionstart", () => {
+            chatInputComposing = true;
+        });
+
+        chatInput.addEventListener("compositionend", () => {
+            chatInputComposing = false;
+        });
+
         chatInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter" && !event.shiftKey) {
+                if (event.isComposing || chatInputComposing || event.keyCode === 229) return;
                 event.preventDefault();
                 sendConferenceMessage();
             }
