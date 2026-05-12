@@ -737,389 +737,205 @@ def bootstrap(app, config):
             transform: rotate(-3deg);
         }
 
-        .mascot {
-            position: absolute;
-            right: -30px;
-            top: 28px;
-            z-index: 1;
-            width: min(52vw, 214px);
-            aspect-ratio: 1;
-            object-fit: cover;
-            border: var(--line);
-            border-radius: 8px;
-            box-shadow: 8px 8px 0 var(--ink);
-            transform: rotate(8deg);
-            animation: floaty 4.2s ease-in-out infinite;
-        }
-
         .mascot-scene {
             position: absolute;
-            right: -30px;
-            top: 28px;
+            right: -28px;
+            top: 26px;
             z-index: 1;
             width: min(52vw, 214px);
             aspect-ratio: 1;
             border: 4px solid var(--ink);
-            border-radius: 8px;
-            background: #4f68b3;
+            border-radius: 12px;
+            background: #516bc5;
             box-shadow: 8px 8px 0 var(--ink);
-            transform: rotate(8deg);
-            overflow: visible;
+            transform: rotate(7deg);
+            overflow: hidden;
+            isolation: isolate;
+            animation: dateCardFloat 5.4s ease-in-out infinite;
         }
 
         .date-mascot {
             position: absolute;
             inset: 0;
+            width: 100%;
+            height: 100%;
             overflow: visible;
-            border-radius: 5px;
         }
 
-        .date-mascot::before {
-            content: "";
-            position: absolute;
-            left: 1px;
-            top: 19px;
-            z-index: 1;
-            width: 207px;
-            height: 170px;
-            background: #fff3ad;
-            border: 5px solid var(--orange);
-            clip-path: polygon(50% 0, 59% 31%, 98% 17%, 73% 48%, 99% 73%, 63% 65%, 56% 100%, 45% 67%, 7% 88%, 28% 55%, 0 33%, 37% 38%);
-            transform: rotate(-10deg) scale(.91);
-            animation: starPulse 5.8s ease-in-out infinite;
+        .date-mascot * {
+            vector-effect: non-scaling-stroke;
         }
 
-        .date-mascot::after {
-            content: "";
-            position: absolute;
-            left: 55px;
-            bottom: 14px;
-            z-index: 2;
-            width: 112px;
-            height: 24px;
-            background: #ff7a1a;
-            border: 4px solid var(--ink);
-            border-radius: 50%;
-            transform: rotate(-3deg);
-            opacity: .9;
+        .date-grid {
+            fill: none;
+            stroke: rgba(255, 255, 255, .22);
+            stroke-width: 1.3;
         }
 
-        .date-face {
-            position: absolute;
-            left: 39px;
-            top: 72px;
-            z-index: 5;
-            width: 142px;
-            height: 108px;
-            background:
-                radial-gradient(circle at 76% 72%, rgba(255, 246, 220, .48) 0 8px, transparent 9px),
-                radial-gradient(circle at 23% 72%, rgba(255, 246, 220, .42) 0 8px, transparent 9px),
-                #ff4f8b;
-            border: 5px solid var(--ink);
-            border-radius: 47% 51% 48% 52% / 46% 48% 54% 52%;
-            box-shadow: inset -10px -10px 0 rgba(77, 21, 92, .18);
-            transform-origin: 52% 78%;
-            animation: dateFaceAct 6.2s ease-in-out infinite;
+        .date-starburst {
+            fill: #fff0a8;
+            stroke: var(--orange);
+            stroke-width: 5;
+            stroke-linejoin: round;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateStarPulse 5.8s ease-in-out infinite;
         }
 
-        .date-face::before {
-            content: "";
-            position: absolute;
-            left: 21px;
-            top: 74px;
-            width: 8px;
-            height: 8px;
-            background: #fff6dc;
-            border: 0;
-            border-radius: 50%;
-            box-shadow:
-                9px 7px 0 -2px #fff6dc,
-                84px -2px 0 #fff6dc,
-                75px 6px 0 -2px #fff6dc;
-            transform: rotate(-4deg);
+        .date-spark {
+            fill: #fff8cb;
+            stroke: var(--orange);
+            stroke-width: 4;
+            stroke-linejoin: round;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateSparkBlink 6.2s ease-in-out infinite;
         }
 
-        .date-face::after {
-            display: none;
+        .date-spark.two {
+            animation-delay: .35s;
+        }
+
+        .date-shadow {
+            fill: #ff7a1a;
+            stroke: var(--ink);
+            stroke-width: 5;
+            opacity: .92;
+        }
+
+        .date-imp {
+            transform-box: fill-box;
+            transform-origin: 50% 78%;
+            animation: dateImpAct 6.2s ease-in-out infinite;
+        }
+
+        .date-tail,
+        .date-tail-tip,
+        .date-horn,
+        .date-head,
+        .date-cheek,
+        .date-hair,
+        .date-glasses-frame,
+        .date-glasses-bridge,
+        .date-glasses-arm,
+        .date-eye-open,
+        .date-wink-line,
+        .date-lash,
+        .date-nose,
+        .date-smile,
+        .date-kiss-mouth,
+        .date-heart-shape {
+            stroke: var(--ink);
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .date-tail {
-            position: absolute;
-            right: 7px;
-            top: 124px;
-            z-index: 4;
-            width: 70px;
-            height: 57px;
-            background: transparent;
-            border: 0;
-            border-right: 6px solid var(--ink);
-            border-bottom: 6px solid var(--ink);
-            border-radius: 0 0 80% 0;
-            box-shadow: none;
-            transform: rotate(-26deg);
+            fill: none;
+            stroke-width: 6;
         }
 
-        .date-tail::before {
-            content: "";
-            position: absolute;
-            right: -20px;
-            top: -6px;
-            width: 27px;
-            height: 24px;
-            background: #ff4f8b;
-            border: 5px solid var(--ink);
-            border-radius: 48% 52% 46% 54%;
-            clip-path: polygon(0 0, 100% 50%, 0 100%);
-            transform: rotate(-11deg);
+        .date-tail-tip {
+            fill: #ff4f8b;
+            stroke-width: 5;
         }
 
         .date-horn {
-            position: absolute;
-            z-index: 9;
-            width: 34px;
-            height: 38px;
-            background: #fff6dc;
-            border: 5px solid var(--ink);
-            border-radius: 55% 45% 15% 15%;
-            clip-path: polygon(50% 0, 100% 100%, 0 100%);
+            fill: #fff6dc;
+            stroke-width: 5;
         }
 
-        .date-horn::after {
-            display: none;
+        .date-head {
+            fill: #ff4f8b;
+            stroke-width: 6;
         }
 
-        .date-horn.left {
-            left: 51px;
-            top: 43px;
-            transform: rotate(-17deg);
+        .date-cheek {
+            fill: #ffd6b6;
+            stroke: none;
+            opacity: .78;
         }
 
-        .date-horn.right {
-            right: 23px;
-            top: 44px;
-            transform: rotate(17deg) scaleX(-1);
-        }
-
-        .date-cap {
-            position: absolute;
-            left: 78px;
-            top: 64px;
-            z-index: 7;
-            width: 66px;
-            height: 24px;
-            background: #17130f;
-            border: 0;
-            border-radius: 999px 999px 14px 14px;
-            box-shadow: none;
-            transform: rotate(-4deg);
-            overflow: visible;
-            animation: dateCapAct 6.2s ease-in-out infinite;
-        }
-
-        .date-cap::before {
-            display: none;
-        }
-
-        .date-cap::after {
-            display: none;
-        }
-
-        .date-brim {
-            position: absolute;
-            left: 57px;
-            top: 160px;
-            z-index: 4;
-            width: 112px;
-            height: 25px;
-            background: var(--orange);
-            border: 5px solid var(--ink);
-            border-radius: 50%;
-            transform: rotate(-4deg);
-            box-shadow: inset 0 -6px 0 rgba(107, 0, 8, .1);
-            animation: dateBrimAct 6.2s ease-in-out infinite;
+        .date-hair {
+            fill: #17130f;
+            stroke-width: 4;
         }
 
         .date-glasses {
-            position: absolute;
-            left: 62px;
-            top: 101px;
-            z-index: 11;
-            width: 88px;
-            height: 35px;
-            transform: rotate(2deg);
-            animation: dateGlasses 6.2s ease-in-out infinite;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateGlassesNudge 6.2s ease-in-out infinite;
         }
 
-        .date-glasses::before,
-        .date-glasses::after {
-            content: "";
-            position: absolute;
-            top: 1px;
-            width: 37px;
-            height: 29px;
-            z-index: 1;
-            background: rgba(255, 255, 255, .48);
-            border: 5px solid var(--ink);
-            border-radius: 49% 54% 48% 52%;
-            box-shadow: inset 4px 4px 0 rgba(255, 255, 255, .34);
+        .date-glasses-frame {
+            fill: rgba(255, 255, 255, .6);
+            stroke-width: 5;
         }
 
-        .date-glasses::before {
-            left: 0;
+        .date-glasses-bridge,
+        .date-glasses-arm {
+            fill: none;
+            stroke-width: 5;
         }
 
-        .date-glasses::after {
-            right: 0;
+        .date-eye-open {
+            fill: var(--ink);
+            stroke: none;
         }
 
-        .date-bridge {
-            position: absolute;
-            left: 38px;
-            top: 15px;
-            z-index: 3;
-            width: 13px;
-            height: 5px;
-            background: var(--ink);
-            border-radius: 999px;
-        }
-
-        .date-eye {
-            position: absolute;
-            top: 13px;
-            z-index: 2;
-            width: 11px;
-            height: 13px;
-            background: var(--ink);
-            border-radius: 60% 50% 55% 45%;
-            transform-origin: 50% 50%;
-        }
-
-        .date-eye.left {
-            left: 15px;
-            animation: dateEyeDot 6.2s ease-in-out infinite;
-        }
-
-        .date-eye.right {
-            right: 15px;
-        }
-
-        .date-eye::before,
-        .date-eye::after {
-            content: "";
-            position: absolute;
-            width: 4px;
-            height: 14px;
-            background: var(--ink);
-            border-radius: 999px;
-            opacity: .95;
-        }
-
-        .date-eye::before {
-            left: -11px;
-            top: -11px;
-            transform: rotate(-35deg);
-        }
-
-        .date-eye::after {
-            right: -11px;
-            top: -11px;
-            transform: rotate(35deg);
+        .date-eye-left-open {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateLeftEyeBlink 6.2s ease-in-out infinite;
         }
 
         .date-wink-line {
-            position: absolute;
-            left: 9px;
-            top: 12px;
-            z-index: 5;
-            width: 20px;
-            height: 9px;
+            fill: none;
+            stroke-width: 5;
             opacity: 0;
-            border-bottom: 5px solid var(--ink);
-            border-radius: 0 0 999px 999px;
-            transform: rotate(-7deg) scaleX(.65);
-            transform-origin: 50% 50%;
+            transform-box: fill-box;
+            transform-origin: center;
             animation: dateWinkLine 6.2s ease-in-out infinite;
         }
 
-        .date-wink-line::before,
-        .date-wink-line::after {
-            display: none;
+        .date-lash {
+            fill: none;
+            stroke-width: 4;
         }
 
-        .date-glint {
-            position: absolute;
-            left: 23px;
-            top: 31px;
-            z-index: 12;
-            width: 18px;
-            height: 18px;
-            background: #fff6dc;
-            border: 4px solid var(--orange);
-            clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-            transform: rotate(-17deg) scale(.75);
-            transform-origin: 50% 50%;
-            animation: sparkleBlink 6.2s ease-in-out infinite;
+        .date-nose {
+            fill: none;
+            stroke-width: 4;
         }
 
-        .date-mouth {
-            position: absolute;
-            left: 96px;
-            top: 142px;
-            z-index: 12;
-            width: 30px;
-            height: 15px;
-            border-bottom: 5px solid var(--ink);
-            border-right: 5px solid var(--ink);
-            border-radius: 0 0 50% 50%;
-            transform: rotate(-10deg);
+        .date-smile {
+            fill: none;
+            stroke-width: 5;
+            opacity: 1;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateSmileSwap 6.2s ease-in-out infinite;
         }
 
-        .date-tongue {
-            position: absolute;
-            left: 90px;
-            top: 135px;
-            z-index: 12;
-            width: 14px;
-            height: 14px;
-            background: #fff;
-            border: 4px solid var(--ink);
-            border-radius: 50%;
-            transform: rotate(-14deg) scale(.2);
-            transform-origin: 50% 50%;
-            animation: dateKissFace 6.2s ease-in-out infinite;
-        }
-
-        .date-pop-kiss {
-            position: absolute;
-            z-index: 9;
-            pointer-events: none;
-        }
-
-        .date-pop-kiss {
-            left: 146px;
-            top: 121px;
-            display: grid;
-            place-items: center;
-            width: 34px;
-            height: 34px;
+        .date-kiss-mouth {
+            fill: #fff6dc;
+            stroke-width: 5;
             opacity: 0;
-            transform: translate(0, 0) rotate(-8deg) scale(.45);
-            transform-origin: 50% 62%;
-            animation: dateKissPop 6.2s ease-in-out infinite;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateKissMouth 6.2s ease-in-out infinite;
         }
 
-        .date-pop-kiss::before {
-            content: "♥";
-            color: #ff2d75;
-            font-family: "Arial Rounded MT Bold", "Jua", ui-rounded, system-ui, sans-serif;
-            font-size: 34px;
-            line-height: 1;
-            -webkit-text-stroke: 2px var(--ink);
-            text-shadow: 2px 2px 0 var(--ink);
+        .date-heart-pop {
+            opacity: 0;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: dateHeartPop 6.2s ease-in-out infinite;
         }
 
-        .date-pop-kiss::after {
-            display: none;
+        .date-heart-shape {
+            fill: #ff2d75;
+            stroke-width: 5;
         }
 
         .office-mascot {
@@ -2874,152 +2690,113 @@ def bootstrap(app, config):
             }
         }
 
-        @keyframes dateMascotDance {
+        @keyframes dateCardFloat {
             0%, 100% {
-                transform: translateY(0) rotate(8deg) scale(1);
+                transform: rotate(7deg) translateY(0);
             }
-            12% {
-                transform: translateY(-14px) rotate(4deg) scale(1.03, .98);
+            45% {
+                transform: rotate(5deg) translateY(-5px);
             }
-            22% {
-                transform: translateY(3px) rotate(11deg) scale(.98, 1.03);
-            }
-            34% {
-                transform: translateY(-9px) rotate(2deg) scale(1.02);
-            }
-            48% {
-                transform: translateY(0) rotate(9deg) scale(1);
-            }
-            62% {
-                transform: translateY(-5px) rotate(13deg) scale(1.01);
-            }
-            74% {
-                transform: translateY(2px) rotate(6deg) scale(.99, 1.02);
+            72% {
+                transform: rotate(8deg) translateY(2px);
             }
         }
 
-        @keyframes dateFaceAct {
+        @keyframes dateStarPulse {
+            0%, 100% {
+                transform: rotate(-4deg) scale(.95);
+            }
+            50% {
+                transform: rotate(2deg) scale(1.02);
+            }
+        }
+
+        @keyframes dateSparkBlink {
+            0%, 42%, 58%, 100% {
+                opacity: .65;
+                transform: scale(.82);
+            }
+            48%, 53% {
+                opacity: 1;
+                transform: scale(1.12);
+            }
+        }
+
+        @keyframes dateImpAct {
             0%, 100% {
                 transform: translateY(0) rotate(0) scale(1);
             }
             12%, 18% {
-                transform: translateY(-2px) rotate(-2deg) scale(1.01);
+                transform: translateY(-3px) rotate(-2deg) scale(1.01);
             }
-            34%, 44% {
-                transform: translateY(1px) rotate(2deg) scale(.99, 1.02);
-            }
-            66%, 76% {
-                transform: translateY(-1px) rotate(-1deg) scale(1.01);
+            64%, 74% {
+                transform: translateY(-1px) rotate(1deg) scale(1.015);
             }
         }
 
-        @keyframes starPulse {
-            0%, 100% {
-                transform: rotate(-10deg) scale(.91);
-            }
-            50% {
-                transform: rotate(-6deg) scale(.97);
-            }
-        }
-
-        @keyframes dateCapAct {
-            0%, 100% {
-                transform: rotate(-4deg) translateY(0);
-            }
-            12%, 18% {
-                transform: rotate(-6deg) translateY(-2px);
-            }
-            66%, 76% {
-                transform: rotate(-3deg) translateY(-1px);
-            }
-        }
-
-        @keyframes dateBrimAct {
-            0%, 100% {
-                transform: rotate(-4deg) translateY(0);
-            }
-            12%, 18% {
-                transform: rotate(-6deg) translateY(1px);
-            }
-            66%, 76% {
-                transform: rotate(-3deg) translateY(0);
-            }
-        }
-
-        @keyframes dateGlasses {
+        @keyframes dateGlassesNudge {
             0%, 9%, 22%, 100% {
-                transform: rotate(2deg) translateY(0);
+                transform: translateY(0) rotate(0);
             }
             12%, 17% {
-                transform: rotate(2deg) translateY(1px);
+                transform: translateY(2px) rotate(-1deg);
             }
         }
 
-        @keyframes sparkleBlink {
-            0%, 38%, 58%, 100% {
-                opacity: .65;
-                transform: rotate(-17deg) scale(.72);
-            }
-            45%, 51% {
+        @keyframes dateLeftEyeBlink {
+            0%, 10%, 21%, 100% {
                 opacity: 1;
-                transform: rotate(4deg) scale(1.08);
+                transform: scaleY(1);
             }
-        }
-
-        @keyframes dateWink {
-            0%, 64%, 82%, 100% {
+            13%, 17% {
                 opacity: 0;
-                transform: rotate(-17deg) scaleX(0);
-            }
-            70%, 75% {
-                opacity: 1;
-                transform: rotate(-17deg) scaleX(1);
-            }
-        }
-
-        @keyframes dateEyeDot {
-            0%, 10%, 20%, 100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-            13%, 16% {
-                opacity: 0;
-                transform: translateY(0) scale(.85);
+                transform: scaleY(.1);
             }
         }
 
         @keyframes dateWinkLine {
-            0%, 10%, 20%, 100% {
+            0%, 10%, 21%, 100% {
                 opacity: 0;
-                transform: rotate(-7deg) scaleX(.65);
+                transform: scaleX(.65);
             }
-            13%, 16% {
+            13%, 17% {
                 opacity: 1;
-                transform: rotate(-7deg) scaleX(1);
+                transform: scaleX(1);
             }
         }
 
-        @keyframes dateKissFace {
-            0%, 58%, 82%, 100% {
-                transform: rotate(-14deg) scaleY(.15);
+        @keyframes dateSmileSwap {
+            0%, 58%, 83%, 100% {
+                opacity: 1;
             }
-            64%, 73% {
-                transform: rotate(-14deg) scaleY(1);
+            64%, 75% {
+                opacity: 0;
             }
         }
 
-        @keyframes dateKissPop {
-            0%, 60%, 86%, 100% {
+        @keyframes dateKissMouth {
+            0%, 58%, 83%, 100% {
                 opacity: 0;
-                transform: translate(0, 0) rotate(-8deg) scale(.45);
+                transform: scale(.55);
             }
-            66% {
+            64%, 75% {
                 opacity: 1;
-                transform: translate(12px, -8px) rotate(-6deg) scale(1);
+                transform: scale(1);
+            }
+        }
+
+        @keyframes dateHeartPop {
+            0%, 61%, 86%, 100% {
+                opacity: 0;
+                transform: translate(0, 0) rotate(-8deg) scale(.55);
+            }
+            67% {
+                opacity: 1;
+                transform: translate(4px, -5px) rotate(-5deg) scale(1);
             }
             78% {
-                opacity: .9;
-                transform: translate(35px, -24px) rotate(7deg) scale(1.16);
+                opacity: .95;
+                transform: translate(15px, -18px) rotate(7deg) scale(1.08);
             }
         }
 
@@ -3125,17 +2902,16 @@ def bootstrap(app, config):
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .date-mascot::before,
-            .date-cap,
-            .date-brim,
-            .date-face,
+            .mascot-scene,
+            .date-starburst,
+            .date-spark,
+            .date-imp,
             .date-glasses,
-            .date-eye,
+            .date-eye-left-open,
             .date-wink-line,
-            .date-glint,
-            .date-tongue,
-            .date-pop-kiss,
-            .mascot,
+            .date-smile,
+            .date-kiss-mouth,
+            .date-heart-pop,
             .office-worker,
             .office-glasses,
             .office-hand,
@@ -3171,19 +2947,40 @@ def bootstrap(app, config):
             <div class="hero">
                 <h2 class="hero-title" id="hero-title">썸톡<br><span>작전</span><br>개시</h2>
                 <div class="mascot-scene" aria-hidden="true">
-                    <div class="date-mascot">
-                        <span class="date-cap"></span>
-                        <span class="date-brim"></span>
-                        <span class="date-horn left"></span>
-                        <span class="date-horn right"></span>
-                        <span class="date-tail"></span>
-                        <span class="date-face"></span>
-                        <span class="date-glasses"><span class="date-eye left"></span><span class="date-eye right"></span><span class="date-wink-line"></span><span class="date-bridge"></span></span>
-                        <span class="date-glint"></span>
-                        <span class="date-mouth"></span>
-                        <span class="date-tongue"></span>
-                        <span class="date-pop-kiss"></span>
-                    </div>
+                    <svg class="date-mascot" viewBox="0 0 220 220" focusable="false">
+                        <path class="date-grid" d="M0 44H220M0 88H220M0 132H220M0 176H220M44 0V220M88 0V220M132 0V220M176 0V220" />
+                        <path class="date-starburst" d="M112 15 125 62 178 39 150 86 200 115 143 122 155 180 113 143 72 184 82 126 23 118 73 87 44 39 99 62Z" />
+                        <path class="date-spark one" d="M40 42 45 57 60 62 45 67 40 82 35 67 20 62 35 57Z" />
+                        <path class="date-spark two" d="M176 28 181 42 195 47 181 52 176 66 171 52 157 47 171 42Z" />
+                        <ellipse class="date-shadow" cx="112" cy="177" rx="58" ry="16" />
+                        <g class="date-imp">
+                            <path class="date-tail" d="M159 133 C187 133 198 153 177 165" />
+                            <path class="date-tail-tip" d="M177 165 196 161 186 179Z" />
+                            <path class="date-horn" d="M71 80 C56 51 67 35 88 61Z" />
+                            <path class="date-horn" d="M144 72 C158 43 176 46 166 79Z" />
+                            <path class="date-head" d="M50 103 C54 66 86 47 122 52 C160 57 184 85 178 124 C173 160 141 180 103 175 C68 171 46 140 50 103Z" />
+                            <path class="date-hair" d="M67 78 C88 54 129 49 158 67 C135 66 102 68 67 78Z" />
+                            <ellipse class="date-cheek" cx="78" cy="137" rx="10" ry="7" />
+                            <ellipse class="date-cheek" cx="150" cy="134" rx="11" ry="7" />
+                            <g class="date-glasses">
+                                <path class="date-glasses-arm" d="M67 111 51 113" />
+                                <path class="date-glasses-arm" d="M159 108 174 104" />
+                                <rect class="date-glasses-frame" x="68" y="94" width="40" height="31" rx="13" />
+                                <rect class="date-glasses-frame" x="119" y="92" width="40" height="31" rx="13" />
+                                <path class="date-glasses-bridge" d="M108 109 C112 104 116 104 119 108" />
+                            </g>
+                            <ellipse class="date-eye-open date-eye-left-open" cx="89" cy="109" rx="5" ry="8" />
+                            <path class="date-wink-line" d="M80 109 Q89 116 99 108" />
+                            <ellipse class="date-eye-open" cx="140" cy="107" rx="5" ry="8" />
+                            <path class="date-lash" d="M79 93 72 86M91 91 90 82M142 90 145 80M153 94 161 86" />
+                            <path class="date-nose" d="M113 116 Q105 123 114 127" />
+                            <path class="date-smile" d="M105 139 Q119 151 135 138" />
+                            <ellipse class="date-kiss-mouth" cx="121" cy="141" rx="9" ry="7" />
+                        </g>
+                        <g class="date-heart-pop">
+                            <path class="date-heart-shape" d="M176 93 C176 83 188 80 194 89 C200 80 213 84 213 95 C213 111 194 122 194 122 C194 122 176 110 176 93Z" />
+                        </g>
+                    </svg>
                 </div>
                 <div class="office-mascot" aria-hidden="true">
                     <div class="office-worker">
