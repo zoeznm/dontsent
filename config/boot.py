@@ -5734,6 +5734,7 @@ def bootstrap(app, config):
         }
 
         .phone.work-mode #style-panel,
+        .phone.work-mode #relation-panel,
         .phone.work-mode #profile-panel,
         .phone.work-mode #composer,
         .phone.work-mode .result-tools:not(.is-empty),
@@ -5749,6 +5750,68 @@ def bootstrap(app, config):
             box-shadow: 7px 7px 0 #000;
         }
 
+        .phone.work-mode #relation-panel,
+        .phone.work-mode #profile-panel,
+        .phone.work-mode #style-panel,
+        .phone.work-mode #composer {
+            position: relative;
+            padding-top: 48px;
+            overflow: hidden;
+        }
+
+        .phone.work-mode #relation-panel::before,
+        .phone.work-mode #style-panel::before,
+        .phone.work-mode #profile-panel::before,
+        .phone.work-mode #composer::before {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            z-index: 2;
+            padding: 7px 9px 5px;
+            border: 4px solid #06122d;
+            color: #06122d;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .phone.work-mode #relation-panel::before {
+            content: "TASK LINE";
+            background: #f6c449;
+        }
+
+        .phone.work-mode #profile-panel::before {
+            content: "CONTACT SCAN";
+            background: var(--mint);
+        }
+
+        .phone.work-mode #style-panel::before {
+            content: "OFFICE TONE";
+            background: #c9ff74;
+        }
+
+        .phone.work-mode #composer::before {
+            content: "MAIL QUEST";
+            background: #39cfff;
+        }
+
+        .phone.work-mode #relation-panel {
+            border-color: #f6c449;
+        }
+
+        .phone.work-mode #profile-panel {
+            border-color: var(--mint);
+        }
+
+        .phone.work-mode #style-panel {
+            border-color: #c9ff74;
+        }
+
+        .phone.work-mode #composer {
+            border-color: #39cfff;
+        }
+
         .phone.work-mode #style-panel::before,
         .phone.work-mode #profile-panel::before,
         .phone.work-mode #composer::before,
@@ -5759,6 +5822,36 @@ def bootstrap(app, config):
             color: #06122d;
         }
 
+        .phone.work-mode .result-tools:not(.is-empty)::before {
+            content: "APPROVAL REWARD";
+        }
+
+        .phone.work-mode .replies:not(.is-empty)::before {
+            content: "REPLY DOCS";
+        }
+
+        .phone.work-mode .compare-view:not(.is-empty)::before {
+            content: "DESK COMPARE";
+        }
+
+        .phone.work-mode #relation-panel::before,
+        .phone.work-mode .result-tools:not(.is-empty)::before {
+            background: #f6c449;
+        }
+
+        .phone.work-mode #profile-panel::before,
+        .phone.work-mode #composer::before,
+        .phone.work-mode .replies:not(.is-empty)::before {
+            background: var(--mint);
+        }
+
+        .phone.work-mode #style-panel::before,
+        .phone.work-mode .compare-view:not(.is-empty)::before {
+            background: #c9ff74;
+        }
+
+        .phone.work-mode #relation-panel .panel-title,
+        .phone.work-mode #relation-panel .hint,
         .phone.work-mode #style-panel .panel-title,
         .phone.work-mode #style-panel .hint,
         .phone.work-mode #profile-panel .panel-title,
@@ -5768,6 +5861,116 @@ def bootstrap(app, config):
             color: var(--pixel-white);
         }
 
+        .phone.work-mode #relation-panel .panel-title::after,
+        .phone.work-mode #profile-panel .panel-title::after,
+        .phone.work-mode #style-panel .panel-title::after,
+        .phone.work-mode #composer .panel-title::after,
+        .phone.work-mode .result-tools:not(.is-empty) .panel-title::after {
+            background: repeating-linear-gradient(90deg, var(--mint) 0 8px, transparent 8px 12px);
+        }
+
+        .phone.work-mode #relation-panel .chip,
+        .phone.work-mode #profile-panel .chip,
+        .phone.work-mode #style-panel .chip,
+        .phone.work-mode #composer .chip,
+        .phone.work-mode .tone-chip,
+        .phone.work-mode .view-button {
+            background: #10245f;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        .phone.work-mode #relation-panel .chip.is-active,
+        .phone.work-mode #profile-panel .chip.is-active,
+        .phone.work-mode #style-panel .chip.is-active,
+        .phone.work-mode #composer .chip.is-active,
+        .phone.work-mode .tone-chip:active,
+        .phone.work-mode .view-button.is-active {
+            background: var(--mint);
+            color: #06122d;
+        }
+
+        .phone.work-mode #profile-panel .field,
+        .phone.work-mode #style-panel .voice-prompt-card,
+        .phone.work-mode #style-panel .style-summary {
+            background: #10245f;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+        }
+
+        .phone.work-mode #profile-panel input,
+        .phone.work-mode #profile-panel .select-wrap,
+        .phone.work-mode #style-panel textarea,
+        .phone.work-mode #composer textarea,
+        .phone.work-mode .chat-input {
+            background: #f4fbff;
+            border-color: var(--mint);
+            color: #06122d;
+            box-shadow: inset 4px 4px 0 rgba(6, 18, 45, .12), 4px 4px 0 #000;
+        }
+
+        .phone.work-mode #style-panel .voice-prompt-card span,
+        .phone.work-mode #style-panel .style-summary strong,
+        .phone.work-mode #style-panel .style-tag,
+        .phone.work-mode #style-panel .style-answer-pill {
+            background: var(--mint);
+            border-color: #06122d;
+            color: #06122d;
+        }
+
+        .phone.work-mode #style-panel .style-next,
+        .phone.work-mode #style-panel .style-sync,
+        .phone.work-mode #style-panel .style-clear,
+        .phone.work-mode #composer .roll,
+        .phone.work-mode #composer .dice,
+        .phone.work-mode .conference-toggle,
+        .phone.work-mode .context-regenerate {
+            border-color: var(--mint);
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        .phone.work-mode #style-panel .style-next,
+        .phone.work-mode #composer .roll,
+        .phone.work-mode .conference-toggle {
+            background: #06122d;
+            color: var(--mint);
+        }
+
+        .phone.work-mode #style-panel .style-sync,
+        .phone.work-mode .context-regenerate {
+            background: var(--mint);
+            color: #06122d;
+        }
+
+        .phone.work-mode #style-panel .style-clear,
+        .phone.work-mode #composer .dice {
+            background: #f6c449;
+            color: #06122d;
+        }
+
+        .phone.work-mode .brief {
+            background: #06122d;
+            border-color: var(--mint);
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        .phone.work-mode .brief div {
+            background: #10245f;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+        }
+
+        .phone.work-mode .brief div:nth-child(2) {
+            background: var(--mint);
+            color: #06122d;
+        }
+
+        .phone.work-mode .brief div:nth-child(3) {
+            background: #c9ff74;
+            color: #06122d;
+        }
+
         .phone.work-mode .reply,
         .phone.work-mode .reply:nth-child(even),
         .phone.work-mode .compare-card,
@@ -5775,6 +5978,28 @@ def bootstrap(app, config):
             background: #f4fbff;
             color: #06122d;
             border-color: var(--mint);
+        }
+
+        .phone.work-mode .result-tools:not(.is-empty) .warning-card,
+        .phone.work-mode .result-tools:not(.is-empty) .result-panel,
+        .phone.work-mode .conference-panel {
+            background: #10245f;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+        }
+
+        .phone.work-mode .warning-card strong,
+        .phone.work-mode .reply strong,
+        .phone.work-mode .compare-card strong {
+            background: #06122d;
+            border-color: var(--mint);
+            color: var(--mint);
+        }
+
+        .phone.work-mode .reply-next {
+            background: #eaf6ff;
+            border-color: #06122d;
+            color: #06122d;
         }
 
         /* Motion removed */
