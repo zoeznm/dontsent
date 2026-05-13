@@ -1127,9 +1127,14 @@ def bootstrap(app, config):
         }
 
         .auth-card {
-            margin-top: 44px;
-            padding: 20px;
+            margin-top: 18px;
+            padding: 18px;
             overflow: hidden;
+            background:
+                linear-gradient(90deg, rgba(23, 19, 15, .06) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(23, 19, 15, .06) 1px, transparent 1px),
+                #fff8df;
+            background-size: 22px 22px, 22px 22px, auto;
         }
 
         .auth-logo {
@@ -1148,6 +1153,20 @@ def bootstrap(app, config):
             transform: rotate(-8deg);
         }
 
+        .auth-card::before {
+            content: "";
+            position: absolute;
+            right: -54px;
+            top: -54px;
+            width: 156px;
+            height: 156px;
+            background: var(--lime);
+            border: var(--line);
+            border-radius: 46% 54% 52% 48%;
+            transform: rotate(18deg);
+            z-index: -1;
+        }
+
         .auth-card h2,
         .intro-copy h2,
         .onboarding-card h2,
@@ -1161,6 +1180,54 @@ def bootstrap(app, config):
         .auth-card h2 {
             font-size: 42px;
             line-height: .95;
+        }
+
+        .auth-comic {
+            display: grid;
+            gap: 9px;
+            margin: 16px 0 18px;
+        }
+
+        .auth-comic-panel {
+            display: grid;
+            gap: 4px;
+            padding: 11px 12px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 12px;
+            box-shadow: 4px 4px 0 var(--ink);
+            transform: rotate(-1.5deg);
+        }
+
+        .auth-comic-panel:nth-child(2) {
+            background: #b9fff0;
+            transform: rotate(1.5deg);
+        }
+
+        .auth-comic-panel:nth-child(3) {
+            background: var(--pink);
+            color: #fff;
+            transform: rotate(-.8deg);
+        }
+
+        .auth-comic-panel small {
+            width: fit-content;
+            padding: 3px 7px;
+            background: var(--ink);
+            border-radius: 999px;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 950;
+        }
+
+        .auth-comic-panel strong {
+            font-size: 17px;
+            line-height: 1.05;
+        }
+
+        .auth-comic-panel span {
+            font-size: 13px;
+            font-weight: 950;
         }
 
         .auth-card p,
@@ -1177,7 +1244,7 @@ def bootstrap(app, config):
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            margin: 20px 0 14px;
+            margin: 14px 0;
         }
 
         .auth-tab,
@@ -3815,6 +3882,23 @@ def bootstrap(app, config):
                 <div class="auth-logo">R</div>
                 <h2>RE:BOUND</h2>
                 <p>답장 못 보내고 핸드폰만 노려보는 시간, 이제 조금 줄여보자.</p>
+                <div class="auth-comic" aria-hidden="true">
+                    <div class="auth-comic-panel">
+                        <small>01 톡</small>
+                        <strong>하트: 오늘 뭐해?</strong>
+                        <span>갑자기 열린 답장 시험지</span>
+                    </div>
+                    <div class="auth-comic-panel">
+                        <small>02 정지</small>
+                        <strong>썼다 지웠다 17회</strong>
+                        <span>내 말투 같은데 덜 민망하게</span>
+                    </div>
+                    <div class="auth-comic-panel">
+                        <small>03 작전</small>
+                        <strong>로그인하고 말투 장착</strong>
+                        <span>AI 티 빼고 나처럼 보내기</span>
+                    </div>
+                </div>
                 <div class="auth-tabs" role="group" aria-label="auth mode">
                     <button class="auth-tab is-active" type="button" data-auth-mode="login">로그인</button>
                     <button class="auth-tab" type="button" data-auth-mode="register">회원가입</button>
@@ -4668,6 +4752,14 @@ def bootstrap(app, config):
             work: null
         };
 
+        const ACCESS_PATH = "/access";
+
+        function goPath(path, replace = true) {
+            if (window.location.pathname === path) return;
+            const method = replace ? "replaceState" : "pushState";
+            window.history[method](null, "", path);
+        }
+
         function setAppScreen(screen) {
             phone.classList.toggle("auth-state", screen === "auth");
             phone.classList.toggle("intro-state", screen === "intro");
@@ -4745,11 +4837,13 @@ def bootstrap(app, config):
             savedProfile = result.profile || defaultSavedProfile();
             hydrateSavedProfile(savedProfile);
             if (!savedProfile.onboardingDone) {
+                goPath("/");
                 setAppScreen("intro");
                 applyMode("date");
                 return;
             }
             applySavedProfileToApp();
+            goPath("/");
             setAppScreen("app");
             applyMode("date");
         }
@@ -4909,10 +5003,10 @@ def bootstrap(app, config):
                 .map((answer, index) => {
                     const text = (answer || "").trim();
                     if (!text) return "";
-                    return `상대: ${modes.date.stylePrompts[index]}\n나: ${text}`;
+                    return `상대: ${modes.date.stylePrompts[index]}\\n나: ${text}`;
                 })
                 .filter(Boolean)
-                .join("\n\n");
+                .join("\\n\\n");
         }
 
         async function finishOnboarding() {
@@ -4942,6 +5036,7 @@ def bootstrap(app, config):
                 const profile = await saveProfile(payload, { toastMessage: "온보딩 저장 완료. 이제 바로 답장 짜자." });
                 hydrateSavedProfile(profile);
                 applySavedProfileToApp();
+                goPath("/");
                 setAppScreen("app");
                 applyMode("date");
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -5991,6 +6086,7 @@ def bootstrap(app, config):
             await apiFetch("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null);
             currentUser = null;
             savedProfile = null;
+            goPath(ACCESS_PATH);
             setAppScreen("auth");
             profileDrawer.classList.remove("is-open");
         });
@@ -6128,10 +6224,12 @@ def bootstrap(app, config):
                 if (result.authenticated) {
                     await enterSession(result);
                 } else {
+                    goPath(ACCESS_PATH);
                     setAppScreen("auth");
                 }
             } catch (error) {
                 authError.textContent = authMessage(error.message);
+                goPath(ACCESS_PATH);
                 setAppScreen("auth");
             }
         }
@@ -6142,6 +6240,7 @@ def bootstrap(app, config):
 </html>"""
 
     @app.flask.route("/")
+    @app.flask.route("/access")
     @app.flask.route("/<path:path>")
     def rebound(path=""):
         return html
