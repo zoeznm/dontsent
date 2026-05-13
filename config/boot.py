@@ -80,21 +80,38 @@ def _adjust_label(value):
 
 
 def _load_db_config():
+    reference = {}
     spec = importlib.util.spec_from_file_location("dontsent_database", DB_CONFIG_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("database_config_missing")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    config = getattr(module, "base", None) or getattr(module, "works", None)
-    if config is None:
-        raise RuntimeError("database_config_invalid")
+    if spec is not None and spec.loader is not None:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        config = getattr(module, "base", None) or getattr(module, "works", None)
+        if config is not None:
+            reference = {
+                "host": getattr(config, "host", ""),
+                "port": getattr(config, "port", 3306),
+                "database": getattr(config, "database", ""),
+                "charset": getattr(config, "charset", "utf8mb4"),
+            }
+    user = os.environ.get("DONTSENT_DB_USER", "").strip()
+    password = os.environ.get("DONTSENT_DB_PASSWORD", "")
+    host = os.environ.get("DONTSENT_DB_HOST", "").strip() or reference.get("host")
+    database = os.environ.get("DONTSENT_DB_NAME", "").strip() or reference.get("database")
+    port = os.environ.get("DONTSENT_DB_PORT", "").strip() or reference.get("port") or 3306
+    charset = os.environ.get("DONTSENT_DB_CHARSET", "").strip() or reference.get("charset") or "utf8mb4"
+
+    if not user or not password:
+        raise RuntimeError("missing_app_db_credentials")
+    if not host or not database:
+        raise RuntimeError("missing_app_db_target")
+
     return {
-        "host": config.host,
-        "port": int(config.port),
-        "user": config.user,
-        "password": config.password,
-        "database": config.database,
-        "charset": getattr(config, "charset", "utf8mb4"),
+        "host": host,
+        "port": int(port),
+        "user": user,
+        "password": password,
+        "database": database,
+        "charset": charset,
         "autocommit": True,
         "cursorclass": DictCursor,
     }
@@ -320,6 +337,13 @@ def _merge_saved_profile(payload):
 
 def _auth_error():
     return jsonify({"error": "auth_required"}), 401
+
+
+def _db_error(error):
+    code = str(error)
+    if code in {"missing_app_db_credentials", "missing_app_db_target"}:
+        return jsonify({"error": code}), 503
+    return jsonify({"error": "database_unavailable"}), 503
 
 
 def _extract_json(text):
@@ -715,8 +739,8 @@ def bootstrap(app, config):
                     return jsonify({"authenticated": False, "user": None, "profile": _profile_payload(None)})
                 profile = _profile_payload(_fetch_profile(conn, user_id))
                 return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
-        except Exception:
-            return jsonify({"error": "database_unavailable"}), 503
+        except Exception as error:
+            return _db_error(error)
 
     @app.flask.route("/api/auth/register", methods=["POST"])
     def api_register():
@@ -744,8 +768,8 @@ def bootstrap(app, config):
                 user = _fetch_user(conn, user_id)
                 profile = _profile_payload(_fetch_profile(conn, user_id))
                 return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
-        except Exception:
-            return jsonify({"error": "database_unavailable"}), 503
+        except Exception as error:
+            return _db_error(error)
 
     @app.flask.route("/api/auth/login", methods=["POST"])
     def api_login():
@@ -763,8 +787,8 @@ def bootstrap(app, config):
                 session["user_id"] = int(user["id"])
                 profile = _profile_payload(_fetch_profile(conn, user["id"]))
                 return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
-        except Exception:
-            return jsonify({"error": "database_unavailable"}), 503
+        except Exception as error:
+            return _db_error(error)
 
     @app.flask.route("/api/auth/logout", methods=["POST"])
     def api_logout():
@@ -787,8 +811,8 @@ def bootstrap(app, config):
                 payload = request.get_json(silent=True) or {}
                 _save_profile(conn, user_id, payload, onboarding_done=payload.get("onboardingDone", True))
                 return jsonify({"profile": _profile_payload(_fetch_profile(conn, user_id))})
-        except Exception:
-            return jsonify({"error": "database_unavailable"}), 503
+        except Exception as error:
+            return _db_error(error)
 
     @app.flask.route("/api/replies", methods=["POST"])
     def api_replies():
@@ -4676,6 +4700,8 @@ def bootstrap(app, config):
                 email_exists: "이미 가입된 이메일이야.",
                 invalid_credentials: "이메일이나 비밀번호가 안 맞아.",
                 database_unavailable: "DB 연결이 잠깐 안 돼. 설정 확인이 필요해.",
+                missing_app_db_credentials: "앱 전용 DB 계정 환경변수가 필요해.",
+                missing_app_db_target: "앱 DB 대상 정보가 필요해.",
                 auth_required: "로그인이 필요해."
             }[code] || "잠깐 삐끗했어. 다시 시도해줘.";
         }
