@@ -5124,6 +5124,54 @@ def bootstrap(app, config):
             }
         }
 
+        /* Motion removed */
+        *,
+        *::before,
+        *::after {
+            transition: none !important;
+        }
+
+        .phone::before,
+        .phone::after,
+        .marquee span,
+        .mascot-scene,
+        .date-starburst,
+        .date-spark,
+        .date-imp,
+        .date-glasses,
+        .date-eye-left-open,
+        .date-wink-line,
+        .date-smile,
+        .date-kiss-mouth,
+        .date-heart-pop,
+        .office-worker,
+        .office-glasses,
+        .office-hand,
+        .office-paper,
+        .story-board,
+        .story-panel,
+        .panic-face,
+        .clock-dot,
+        .intro-copy,
+        .is-popping {
+            animation: none !important;
+        }
+
+        .phone.intro-state .intro-screen {
+            display: grid !important;
+            align-content: center;
+        }
+
+        .story-board {
+            display: none !important;
+        }
+
+        .intro-copy {
+            margin-top: 0;
+            opacity: 1 !important;
+            transform: none !important;
+        }
+
         @keyframes ticker {
             to {
                 transform: translateX(-100%);
