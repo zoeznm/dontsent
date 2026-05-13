@@ -1067,6 +1067,56 @@ def bootstrap(app, config):
             display: block;
         }
 
+        .phone.auth-state {
+            --ink: #101010;
+            --paper: #f5efe2;
+            --cream: #f5efe2;
+            --pink: #101010;
+            --lime: #e9ff5c;
+            --blue: #101010;
+            --violet: #2d2d2d;
+            --mint: #f5efe2;
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, .08) 1px, transparent 1px),
+                linear-gradient(315deg, rgba(255, 255, 255, .06) 1px, transparent 1px),
+                #101010;
+            background-size: 19px 19px, 19px 19px, auto;
+            color: #101010;
+        }
+
+        .phone.auth-state::before {
+            left: auto;
+            right: 18px;
+            top: 18px;
+            z-index: 0;
+            width: 74px;
+            height: calc(100% - 36px);
+            background:
+                repeating-linear-gradient(180deg, #f5efe2 0 7px, transparent 7px 14px),
+                transparent;
+            border: 0;
+            border-radius: 0;
+            opacity: .16;
+            transform: none;
+            animation: none;
+        }
+
+        .phone.auth-state::after {
+            left: 20px;
+            right: auto;
+            top: 18px;
+            bottom: auto;
+            z-index: 0;
+            width: calc(100% - 40px);
+            height: 16px;
+            background: repeating-linear-gradient(90deg, #e9ff5c 0 18px, #101010 18px 30px);
+            border: 0;
+            border-radius: 0;
+            opacity: .95;
+            transform: none;
+            animation: none;
+        }
+
         .signal {
             padding: 7px 9px 6px;
             background: var(--lime);
@@ -1137,6 +1187,16 @@ def bootstrap(app, config):
             background-size: 22px 22px, 22px 22px, auto;
         }
 
+        .phone.auth-state .auth-card {
+            margin: 34px 0 0;
+            padding: 0;
+            background: #f5efe2;
+            border: 0;
+            border-radius: 3px;
+            box-shadow: none;
+            overflow: hidden;
+        }
+
         .auth-logo {
             display: grid;
             place-items: center;
@@ -1167,6 +1227,30 @@ def bootstrap(app, config):
             z-index: -1;
         }
 
+        .phone.auth-state .auth-card::before {
+            right: 0;
+            top: 0;
+            z-index: 0;
+            width: 100%;
+            height: 58px;
+            background: #101010;
+            border: 0;
+            border-radius: 0;
+            transform: none;
+        }
+
+        .phone.auth-state .auth-card::after {
+            content: "";
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            bottom: 16px;
+            z-index: 0;
+            height: 42px;
+            background: repeating-linear-gradient(90deg, #101010 0 4px, transparent 4px 8px, #101010 8px 10px, transparent 10px 16px);
+            opacity: .18;
+        }
+
         .auth-card h2,
         .intro-copy h2,
         .onboarding-card h2,
@@ -1180,6 +1264,43 @@ def bootstrap(app, config):
         .auth-card h2 {
             font-size: 42px;
             line-height: .95;
+        }
+
+        .phone.auth-state .auth-logo {
+            position: relative;
+            z-index: 1;
+            width: 46px;
+            height: 46px;
+            margin: 18px 18px 14px;
+            background: #e9ff5c;
+            border: 0;
+            border-radius: 2px;
+            color: #101010;
+            font-family: "Jua", system-ui, sans-serif;
+            font-size: 25px;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .phone.auth-state .auth-card h2 {
+            position: relative;
+            z-index: 1;
+            margin: 0 18px;
+            max-width: 260px;
+            font-family: "Jua", ui-rounded, system-ui, sans-serif;
+            font-size: 48px;
+            font-weight: 950;
+            line-height: .9;
+            text-transform: uppercase;
+        }
+
+        .phone.auth-state .auth-card > p {
+            position: relative;
+            z-index: 1;
+            margin: 12px 18px 0;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.42;
         }
 
         .auth-comic {
@@ -1230,6 +1351,53 @@ def bootstrap(app, config):
             font-weight: 950;
         }
 
+        .phone.auth-state .auth-comic {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            margin: 18px 0 0;
+            border-top: 2px dashed rgba(16, 16, 16, .38);
+            border-bottom: 2px dashed rgba(16, 16, 16, .38);
+        }
+
+        .phone.auth-state .auth-comic-panel,
+        .phone.auth-state .auth-comic-panel:nth-child(2),
+        .phone.auth-state .auth-comic-panel:nth-child(3) {
+            min-height: 64px;
+            padding: 12px 18px;
+            background: transparent;
+            border: 0;
+            border-bottom: 1px solid rgba(16, 16, 16, .16);
+            border-radius: 0;
+            box-shadow: none;
+            color: #101010;
+            transform: none;
+        }
+
+        .phone.auth-state .auth-comic-panel:last-child {
+            border-bottom: 0;
+        }
+
+        .phone.auth-state .auth-comic-panel small {
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            color: #767061;
+            font-size: 11px;
+            letter-spacing: .08em;
+        }
+
+        .phone.auth-state .auth-comic-panel strong {
+            font-size: 18px;
+        }
+
+        .phone.auth-state .auth-comic-panel span {
+            color: #565145;
+            font-size: 12px;
+        }
+
         .auth-card p,
         .intro-copy p,
         .onboarding-card p,
@@ -1263,9 +1431,40 @@ def bootstrap(app, config):
             color: #fff;
         }
 
+        .phone.auth-state .auth-tabs {
+            position: relative;
+            z-index: 1;
+            margin: 18px;
+            padding: 4px;
+            background: #101010;
+            border: 0;
+            border-radius: 3px;
+        }
+
+        .phone.auth-state .auth-tab {
+            min-height: 43px;
+            background: transparent;
+            border: 0;
+            border-radius: 2px;
+            color: #f5efe2;
+            box-shadow: none;
+        }
+
+        .phone.auth-state .auth-tab.is-active {
+            background: #e9ff5c;
+            color: #101010;
+        }
+
         .auth-form {
             display: grid;
             gap: 10px;
+        }
+
+        .phone.auth-state .auth-form {
+            position: relative;
+            z-index: 1;
+            gap: 12px;
+            padding: 0 18px 82px;
         }
 
         .auth-form input,
@@ -1291,6 +1490,35 @@ def bootstrap(app, config):
 
         .auth-form.is-register input[name="name"] {
             display: block;
+        }
+
+        .phone.auth-state .auth-form input {
+            padding: 15px 0 10px;
+            background: transparent;
+            border: 0;
+            border-bottom: 3px solid #101010;
+            border-radius: 0;
+            box-shadow: none;
+            color: #101010;
+            font-size: 18px;
+        }
+
+        .phone.auth-state .auth-form input::placeholder {
+            color: #8b8370;
+        }
+
+        .phone.auth-state .auth-form .primary-action {
+            margin-top: 6px;
+            background: #101010;
+            border: 0;
+            border-radius: 3px;
+            color: #f5efe2;
+            box-shadow: none;
+        }
+
+        .phone.auth-state .auth-error {
+            color: #101010;
+            font-size: 13px;
         }
 
         .primary-action,
@@ -3880,23 +4108,23 @@ def bootstrap(app, config):
         <section class="auth-screen" id="auth-screen" aria-label="login">
             <div class="auth-card">
                 <div class="auth-logo">R</div>
-                <h2>RE:BOUND</h2>
-                <p>답장 못 보내고 핸드폰만 노려보는 시간, 이제 조금 줄여보자.</p>
+                <h2>ACCESS<br>PASS</h2>
+                <p>RE:BOUND 계정으로 말투와 상대 프로필을 불러와. 여기부터는 로그인 전용 입구야.</p>
                 <div class="auth-comic" aria-hidden="true">
                     <div class="auth-comic-panel">
-                        <small>01 톡</small>
-                        <strong>하트: 오늘 뭐해?</strong>
-                        <span>갑자기 열린 답장 시험지</span>
+                        <small>ENTRY 01</small>
+                        <strong>내 말투 저장소</strong>
+                        <span>답장 샘플과 말끝 습관을 불러옴</span>
                     </div>
                     <div class="auth-comic-panel">
-                        <small>02 정지</small>
-                        <strong>썼다 지웠다 17회</strong>
-                        <span>내 말투 같은데 덜 민망하게</span>
+                        <small>ENTRY 02</small>
+                        <strong>상대 프로필 잠금해제</strong>
+                        <span>애칭, 관계, 연락 스타일을 저장</span>
                     </div>
                     <div class="auth-comic-panel">
-                        <small>03 작전</small>
-                        <strong>로그인하고 말투 장착</strong>
-                        <span>AI 티 빼고 나처럼 보내기</span>
+                        <small>ENTRY 03</small>
+                        <strong>AI 설정 동기화</strong>
+                        <span>따뜻함과 단호함을 기본값으로 세팅</span>
                     </div>
                 </div>
                 <div class="auth-tabs" role="group" aria-label="auth mode">
