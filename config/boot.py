@@ -856,7 +856,7 @@ def bootstrap(app, config):
             return jsonify({"error": "ai_response_invalid"}), 502
 
     html = """<!doctype html>
-<html lang="ko">
+<html lang="ko" class="auth-mode">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -912,6 +912,21 @@ def bootstrap(app, config):
 
         body.auth-mode {
             height: 100svh;
+            background:
+                linear-gradient(90deg, rgba(245, 239, 226, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(245, 239, 226, .07) 1px, transparent 1px),
+                radial-gradient(circle at 50% 18%, rgba(233, 255, 92, .34) 0 5%, transparent 20%),
+                radial-gradient(circle at 18% 82%, rgba(185, 255, 240, .2) 0 7%, transparent 24%),
+                linear-gradient(140deg, #050505 0%, #101010 38%, #232313 62%, #f5efe2 62.5%, #f5efe2 69%, #101010 69.5%, #050505 100%);
+            background-size: 26px 26px, 26px 26px, auto, auto, auto;
+            overflow: hidden;
+        }
+
+        html.auth-mode {
+            height: 100%;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(233, 255, 92, .34) 0 5%, transparent 20%),
+                linear-gradient(140deg, #050505 0%, #101010 38%, #232313 62%, #f5efe2 62.5%, #f5efe2 69%, #101010 69.5%, #050505 100%);
             overflow: hidden;
         }
 
@@ -5168,6 +5183,7 @@ def bootstrap(app, config):
             phone.classList.toggle("intro-state", screen === "intro");
             phone.classList.toggle("onboarding-state", screen === "onboarding");
             phone.classList.toggle("app-state", screen === "app");
+            document.documentElement.classList.toggle("auth-mode", screen === "auth");
             document.body.classList.toggle("auth-mode", screen === "auth");
         }
 
