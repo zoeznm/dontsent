@@ -1736,11 +1736,41 @@ def bootstrap(app, config):
         .story-board {
             position: relative;
             display: block;
-            height: 452px;
+            height: 468px;
             min-height: 0;
-            padding-top: 18px;
+            margin-top: 36px;
+            padding: 52px 14px 18px;
+            background:
+                repeating-linear-gradient(90deg, rgba(16, 16, 16, .07) 0 1px, transparent 1px 18px),
+                repeating-linear-gradient(180deg, rgba(16, 16, 16, .07) 0 1px, transparent 1px 18px),
+                #fff8df;
+            border: var(--line);
+            border-radius: 0;
+            box-shadow: 8px 8px 0 var(--ink);
             overflow: hidden;
             animation: storyBoardClear 10.4s ease-in-out both;
+        }
+
+        .story-board::before {
+            content: "답장 패닉 컷";
+            position: absolute;
+            top: 13px;
+            left: 14px;
+            z-index: 3;
+            padding: 7px 10px 5px;
+            background: var(--ink);
+            color: #fff8df;
+            font-size: 12px;
+            font-weight: 950;
+        }
+
+        .story-board::after {
+            content: "";
+            position: absolute;
+            inset: 48px 14px 18px;
+            z-index: 1;
+            border: 2px dashed rgba(16, 16, 16, .3);
+            pointer-events: none;
         }
 
         .story-panel {
@@ -1748,15 +1778,18 @@ def bootstrap(app, config):
             top: var(--cut-top, 28px);
             left: var(--cut-left, 0);
             right: var(--cut-right, 0);
+            z-index: 2;
             display: grid;
             gap: 12px;
             align-content: center;
-            min-height: 126px;
-            padding: 13px;
-            background: #fff;
+            min-height: 132px;
+            padding: 34px 15px 14px;
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, .65) 0 12px, transparent 12px),
+                #ffffff;
             border: var(--line);
-            border-radius: 12px;
-            box-shadow: 5px 5px 0 var(--ink);
+            border-radius: 0;
+            box-shadow: 6px 6px 0 var(--ink);
             overflow: hidden;
             opacity: 0;
             transform: translate(var(--cut-enter-x, 30px), var(--cut-enter-y, 24px)) rotate(var(--cut-rotate, 2deg)) scale(.96);
@@ -1765,63 +1798,113 @@ def bootstrap(app, config):
             will-change: opacity, transform;
         }
 
+        .story-panel::before {
+            content: var(--cut-label, "CUT");
+            position: absolute;
+            top: 9px;
+            left: 10px;
+            padding: 4px 8px 3px;
+            background: var(--ink);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 950;
+            line-height: 1;
+        }
+
+        .story-panel::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 9px;
+            background: repeating-linear-gradient(90deg, var(--cut-accent, var(--orange)) 0 18px, var(--ink) 18px 22px);
+        }
+
         .story-panel:nth-child(1) {
-            --cut-top: 24px;
-            --cut-left: 34px;
-            --cut-right: 0;
+            --cut-label: "컷 01";
+            --cut-accent: var(--mint);
+            --cut-top: 78px;
+            --cut-left: 32px;
+            --cut-right: 14px;
             --cut-enter-x: 34px;
+            background: #b9fff0;
         }
 
         .story-panel:nth-child(2) {
-            --cut-top: 134px;
-            --cut-left: 0;
-            --cut-right: 26px;
+            --cut-label: "컷 02";
+            --cut-accent: var(--pink);
+            --cut-top: 172px;
+            --cut-left: 14px;
+            --cut-right: 34px;
             --cut-enter-x: -34px;
             --cut-rotate: -2deg;
             grid-template-columns: auto 1fr;
             align-items: center;
+            background: #ffd4e0;
             animation-delay: 2.85s;
         }
 
         .story-panel:nth-child(3) {
-            --cut-top: 254px;
-            --cut-left: 18px;
-            --cut-right: 0;
+            --cut-label: "컷 03";
+            --cut-accent: var(--blue);
+            --cut-top: 270px;
+            --cut-left: 34px;
+            --cut-right: 12px;
             --cut-enter-x: 28px;
+            background: #fff;
             animation-delay: 5.25s;
         }
 
         .story-panel:nth-child(4) {
-            --cut-top: 116px;
-            --cut-left: 24px;
-            --cut-right: 24px;
-            min-height: 204px;
-            background: var(--lime);
+            --cut-label: "컷 04";
+            --cut-accent: var(--lime);
+            --cut-top: 126px;
+            --cut-left: 18px;
+            --cut-right: 18px;
+            min-height: 228px;
+            background:
+                repeating-linear-gradient(-10deg, rgba(16, 16, 16, .12) 0 2px, transparent 2px 12px),
+                var(--lime);
             animation-delay: 7.65s;
         }
 
         .phone-bubble {
+            position: relative;
             display: grid;
-            gap: 7px;
-            max-width: 210px;
+            gap: 8px;
+            width: 72%;
+            max-width: 230px;
+            min-height: 74px;
             margin-left: auto;
-            padding: 10px 12px;
-            background: #b9fff0;
+            padding: 24px 13px 12px;
+            background: #fff8df;
             border: var(--line);
-            border-radius: 14px 14px 4px 14px;
+            border-radius: 0;
+            box-shadow: 4px 4px 0 rgba(16, 16, 16, .28);
             font-size: 15px;
             font-weight: 950;
+        }
+
+        .phone-bubble::before {
+            content: "";
+            position: absolute;
+            top: 9px;
+            left: 12px;
+            width: 54px;
+            height: 6px;
+            background: var(--ink);
         }
 
         .panic-face {
             display: inline-grid;
             place-items: center;
-            width: 76px;
-            height: 76px;
-            background: var(--pink);
+            width: 70px;
+            height: 70px;
+            background: var(--lime);
             border: var(--line);
-            border-radius: 50%;
-            color: #fff;
+            border-radius: 0;
+            color: var(--ink);
             font-size: 38px;
             box-shadow: 4px 4px 0 var(--ink);
             animation: panicShake .55s steps(2, end) infinite;
@@ -1833,25 +1916,30 @@ def bootstrap(app, config):
             gap: 8px;
             font-size: 28px;
             font-weight: 950;
+            padding: 12px 12px 10px;
+            background: var(--ink);
+            color: #fff8df;
         }
 
         .clock-dot {
             width: 22px;
             height: 22px;
-            background: var(--blue);
+            background: var(--lime);
             border: var(--line);
-            border-radius: 50%;
+            border-radius: 0;
             animation: clockRun .8s linear infinite;
         }
 
         .boom {
             display: grid;
             place-items: center;
-            min-height: 116px;
+            min-height: 146px;
+            background: #fff8df;
+            border: var(--line);
             font-family: "Bagel Fat One", "Jua", system-ui, sans-serif;
-            font-size: 46px;
+            font-size: 58px;
             color: var(--ink);
-            text-shadow: 3px 3px 0 #fff;
+            text-shadow: 4px 4px 0 var(--orange);
             transform: rotate(-8deg);
         }
 
@@ -4250,12 +4338,14 @@ def bootstrap(app, config):
 
         @keyframes storyBoardClear {
             0%, 94% {
-                height: 452px;
-                padding-top: 18px;
+                height: 468px;
+                margin-top: 36px;
+                padding-top: 52px;
                 opacity: 1;
             }
             100% {
                 height: 0;
+                margin-top: 0;
                 padding-top: 0;
                 opacity: 0;
             }
