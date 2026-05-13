@@ -930,6 +930,16 @@ def bootstrap(app, config):
             overflow: hidden;
         }
 
+        html.intro-mode,
+        body.intro-mode {
+            background-color: #f5efe2;
+            background-image:
+                repeating-linear-gradient(90deg, rgba(16, 16, 16, .08) 0 1px, transparent 1px 24px),
+                repeating-linear-gradient(180deg, rgba(16, 16, 16, .08) 0 1px, transparent 1px 24px),
+                repeating-linear-gradient(135deg, transparent 0 22px, rgba(255, 122, 26, .2) 22px 24px, transparent 24px 48px);
+            background-size: 24px 24px, 24px 24px, 48px 48px;
+        }
+
         button,
         input,
         textarea {
@@ -1149,8 +1159,46 @@ def bootstrap(app, config):
 
         .phone.intro-state::before,
         .phone.intro-state::after {
-            opacity: 0;
             animation: none;
+        }
+
+        .phone.intro-state {
+            background-color: #fff8df;
+            background-image:
+                repeating-linear-gradient(90deg, rgba(16, 16, 16, .08) 0 1px, transparent 1px 23px),
+                repeating-linear-gradient(180deg, rgba(16, 16, 16, .08) 0 1px, transparent 1px 23px);
+            background-size: 23px 23px;
+        }
+
+        .phone.intro-state::before {
+            left: 18px;
+            right: 18px;
+            top: 16px;
+            z-index: 0;
+            width: auto;
+            height: 28px;
+            background: repeating-linear-gradient(90deg, var(--ink) 0 16px, var(--lime) 16px 34px, var(--pink) 34px 52px, var(--mint) 52px 70px);
+            border: var(--line);
+            border-radius: 0;
+            opacity: 1;
+            transform: none;
+        }
+
+        .phone.intro-state::after {
+            left: auto;
+            right: -10px;
+            top: 74px;
+            bottom: auto;
+            z-index: 0;
+            width: 62px;
+            height: calc(100% - 132px);
+            background:
+                repeating-linear-gradient(180deg, var(--blue) 0 12px, transparent 12px 20px),
+                #fff8df;
+            border: var(--line);
+            border-radius: 0;
+            opacity: .95;
+            transform: rotate(2deg);
         }
 
         .signal {
@@ -5184,7 +5232,9 @@ def bootstrap(app, config):
             phone.classList.toggle("onboarding-state", screen === "onboarding");
             phone.classList.toggle("app-state", screen === "app");
             document.documentElement.classList.toggle("auth-mode", screen === "auth");
+            document.documentElement.classList.toggle("intro-mode", screen === "intro");
             document.body.classList.toggle("auth-mode", screen === "auth");
+            document.body.classList.toggle("intro-mode", screen === "intro");
         }
 
         async function apiFetch(url, options = {}) {
