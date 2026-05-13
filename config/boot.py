@@ -1124,6 +1124,12 @@ def bootstrap(app, config):
             animation: none;
         }
 
+        .phone.intro-state::before,
+        .phone.intro-state::after {
+            opacity: 0;
+            animation: none;
+        }
+
         .signal {
             padding: 7px 9px 6px;
             background: var(--lime);
@@ -1564,15 +1570,24 @@ def bootstrap(app, config):
         }
 
         .story-board {
-            display: grid;
-            gap: 12px;
-            min-height: 430px;
+            position: relative;
+            display: block;
+            height: 452px;
+            min-height: 0;
             padding-top: 18px;
+            overflow: hidden;
+            animation: storyBoardClear 10.4s ease-in-out both;
         }
 
         .story-panel {
-            position: relative;
-            min-height: 86px;
+            position: absolute;
+            top: var(--cut-top, 28px);
+            left: var(--cut-left, 0);
+            right: var(--cut-right, 0);
+            display: grid;
+            gap: 12px;
+            align-content: center;
+            min-height: 126px;
             padding: 13px;
             background: #fff;
             border: var(--line);
@@ -1580,22 +1595,45 @@ def bootstrap(app, config):
             box-shadow: 5px 5px 0 var(--ink);
             overflow: hidden;
             opacity: 0;
-            transform: translateX(32px) rotate(2deg);
-            animation: storySlide 4.8s ease-in-out both;
+            transform: translate(var(--cut-enter-x, 30px), var(--cut-enter-y, 24px)) rotate(var(--cut-rotate, 2deg)) scale(.96);
+            animation: storyCut 2.05s cubic-bezier(.2, 1, .2, 1) both;
+            animation-delay: .45s;
+            will-change: opacity, transform;
+        }
+
+        .story-panel:nth-child(1) {
+            --cut-top: 24px;
+            --cut-left: 34px;
+            --cut-right: 0;
+            --cut-enter-x: 34px;
         }
 
         .story-panel:nth-child(2) {
-            animation-delay: .65s;
-            transform: translateX(-32px) rotate(-2deg);
+            --cut-top: 134px;
+            --cut-left: 0;
+            --cut-right: 26px;
+            --cut-enter-x: -34px;
+            --cut-rotate: -2deg;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            animation-delay: 2.85s;
         }
 
         .story-panel:nth-child(3) {
-            animation-delay: 1.3s;
+            --cut-top: 254px;
+            --cut-left: 18px;
+            --cut-right: 0;
+            --cut-enter-x: 28px;
+            animation-delay: 5.25s;
         }
 
         .story-panel:nth-child(4) {
-            animation-delay: 1.95s;
+            --cut-top: 116px;
+            --cut-left: 24px;
+            --cut-right: 24px;
+            min-height: 204px;
             background: var(--lime);
+            animation-delay: 7.65s;
         }
 
         .phone-bubble {
@@ -1654,7 +1692,7 @@ def bootstrap(app, config):
         }
 
         .intro-copy {
-            margin-top: 18px;
+            margin-top: 10px;
             padding: 18px;
             background: var(--cream);
             border: var(--line);
@@ -1662,7 +1700,7 @@ def bootstrap(app, config):
             box-shadow: 8px 8px 0 var(--ink);
             opacity: 0;
             transform: translateY(22px);
-            animation: introCopyIn .35s ease-out 3.25s both;
+            animation: introCopyIn .48s cubic-bezier(.2, 1, .2, 1) 10.6s both;
         }
 
         .intro-copy h2 {
@@ -4046,18 +4084,31 @@ def bootstrap(app, config):
             }
         }
 
-        @keyframes storySlide {
-            0% {
-                opacity: 0;
-                transform: translateX(32px) rotate(2deg) scale(.96);
-            }
-            18%, 82% {
+        @keyframes storyBoardClear {
+            0%, 94% {
+                height: 452px;
+                padding-top: 18px;
                 opacity: 1;
-                transform: translateX(0) rotate(0) scale(1);
             }
             100% {
-                opacity: .18;
-                transform: translateX(-18px) rotate(-1deg) scale(.98);
+                height: 0;
+                padding-top: 0;
+                opacity: 0;
+            }
+        }
+
+        @keyframes storyCut {
+            0% {
+                opacity: 0;
+                transform: translate(var(--cut-enter-x, 30px), var(--cut-enter-y, 24px)) rotate(var(--cut-rotate, 2deg)) scale(.96);
+            }
+            16%, 74% {
+                opacity: 1;
+                transform: translate(0, 0) rotate(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--cut-exit-x, -26px), -16px) rotate(var(--cut-exit-rotate, -1deg)) scale(.98);
             }
         }
 
@@ -4100,12 +4151,28 @@ def bootstrap(app, config):
             .office-paper,
             .phone::before,
             .phone::after,
+            .story-board,
             .story-panel,
             .panic-face,
             .clock-dot,
             .intro-copy,
             .marquee span {
                 animation: none;
+            }
+
+            .story-board {
+                height: auto;
+                overflow: visible;
+            }
+
+            .story-panel,
+            .intro-copy {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                opacity: 1;
+                transform: none;
             }
         }
     </style>
