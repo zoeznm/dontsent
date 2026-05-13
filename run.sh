@@ -58,7 +58,7 @@ fi
 
 service ssh restart
 
-pip install -U season
+pip install -U season pymysql cryptography
 
 wiz service regist app 3000
 wiz service start app

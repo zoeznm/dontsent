@@ -1,13 +1,19 @@
 import os
 import json
 import re
+import importlib.util
 import urllib.error
 import urllib.request
 
-from flask import jsonify, request, send_file
+import pymysql
+from flask import jsonify, request, send_file, session
+from pymysql.cursors import DictCursor
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+DB_CONFIG_PATH = "/opt/app/project/main/config/database.py"
+_SCHEMA_READY = False
 
 LABELS = {
     "crush": "썸 타는 중",
@@ -73,6 +79,249 @@ def _adjust_label(value):
     return ADJUST_LABELS.get(value, "기본")
 
 
+def _load_db_config():
+    spec = importlib.util.spec_from_file_location("dontsent_database", DB_CONFIG_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("database_config_missing")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config = getattr(module, "base", None) or getattr(module, "works", None)
+    if config is None:
+        raise RuntimeError("database_config_invalid")
+    return {
+        "host": config.host,
+        "port": int(config.port),
+        "user": config.user,
+        "password": config.password,
+        "database": config.database,
+        "charset": getattr(config, "charset", "utf8mb4"),
+        "autocommit": True,
+        "cursorclass": DictCursor,
+    }
+
+
+def _db():
+    global _SCHEMA_READY
+    conn = pymysql.connect(**_load_db_config())
+    if not _SCHEMA_READY:
+        _ensure_schema(conn)
+        _SCHEMA_READY = True
+    return conn
+
+
+def _ensure_schema(conn):
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS dontsent_users (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(190) NOT NULL UNIQUE,
+                name VARCHAR(80) NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS dontsent_profiles (
+                user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+                onboarding_done TINYINT(1) NOT NULL DEFAULT 0,
+                style_samples TEXT NULL,
+                style_profile VARCHAR(500) NULL,
+                style_tags TEXT NULL,
+                partner_nickname VARCHAR(120) NULL,
+                partner_relation VARCHAR(80) NULL,
+                partner_contact VARCHAR(80) NULL,
+                partner_mbti VARCHAR(16) NULL,
+                partner_age VARCHAR(80) NULL,
+                partner_gender VARCHAR(80) NULL,
+                partner_job VARCHAR(160) NULL,
+                ai_tone VARCHAR(80) NOT NULL DEFAULT 'balanced',
+                ai_warmth VARCHAR(80) NOT NULL DEFAULT 'normal',
+                ai_directness VARCHAR(80) NOT NULL DEFAULT 'normal',
+                ai_playfulness VARCHAR(80) NOT NULL DEFAULT 'normal',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_dontsent_profiles_onboarding (onboarding_done)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """
+        )
+
+
+def _clean_text(value, limit=500):
+    return str(value or "").strip()[:limit]
+
+
+def _current_user_id():
+    try:
+        return int(session.get("user_id") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _public_user(row):
+    if not row:
+        return None
+    return {
+        "id": row.get("id"),
+        "email": row.get("email"),
+        "name": row.get("name"),
+    }
+
+
+def _profile_payload(row):
+    if not row:
+        return {
+            "onboardingDone": False,
+            "styleSamples": "",
+            "styleProfile": "",
+            "styleTags": [],
+            "partnerNickname": "",
+            "relation": "crush",
+            "contact": "normal",
+            "mbti": "",
+            "age": "",
+            "gender": "",
+            "job": "",
+            "aiTone": "balanced",
+            "aiWarmth": "normal",
+            "aiDirectness": "normal",
+            "aiPlayfulness": "normal",
+        }
+    try:
+        style_tags = json.loads(row.get("style_tags") or "[]")
+    except json.JSONDecodeError:
+        style_tags = []
+    return {
+        "onboardingDone": bool(row.get("onboarding_done")),
+        "styleSamples": row.get("style_samples") or "",
+        "styleProfile": row.get("style_profile") or "",
+        "styleTags": style_tags if isinstance(style_tags, list) else [],
+        "partnerNickname": row.get("partner_nickname") or "",
+        "relation": row.get("partner_relation") or "crush",
+        "contact": row.get("partner_contact") or "normal",
+        "mbti": row.get("partner_mbti") or "",
+        "age": row.get("partner_age") or "",
+        "gender": row.get("partner_gender") or "",
+        "job": row.get("partner_job") or "",
+        "aiTone": row.get("ai_tone") or "balanced",
+        "aiWarmth": row.get("ai_warmth") or "normal",
+        "aiDirectness": row.get("ai_directness") or "normal",
+        "aiPlayfulness": row.get("ai_playfulness") or "normal",
+    }
+
+
+def _fetch_user(conn, user_id):
+    if not user_id:
+        return None
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT id, email, name FROM dontsent_users WHERE id=%s", (user_id,))
+        return cursor.fetchone()
+
+
+def _fetch_profile(conn, user_id):
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM dontsent_profiles WHERE user_id=%s", (user_id,))
+        return cursor.fetchone()
+
+
+def _save_profile(conn, user_id, payload, onboarding_done=None):
+    style_tags = payload.get("styleTags")
+    if not isinstance(style_tags, list):
+        style_tags = []
+    if onboarding_done is None:
+        onboarding_done = bool(payload.get("onboardingDone"))
+    data = {
+        "user_id": user_id,
+        "onboarding_done": 1 if onboarding_done else 0,
+        "style_samples": _clean_text(payload.get("styleSamples"), 3000),
+        "style_profile": _clean_text(payload.get("styleProfile"), 500),
+        "style_tags": json.dumps(style_tags[:8], ensure_ascii=False),
+        "partner_nickname": _clean_text(payload.get("partnerNickname"), 120),
+        "partner_relation": _clean_text(payload.get("relation"), 80) or "crush",
+        "partner_contact": _clean_text(payload.get("contact"), 80) or "normal",
+        "partner_mbti": _clean_text(payload.get("mbti"), 16).upper(),
+        "partner_age": _clean_text(payload.get("age"), 80),
+        "partner_gender": _clean_text(payload.get("gender"), 80),
+        "partner_job": _clean_text(payload.get("job"), 160),
+        "ai_tone": _clean_text(payload.get("aiTone"), 80) or "balanced",
+        "ai_warmth": _clean_text(payload.get("aiWarmth"), 80) or "normal",
+        "ai_directness": _clean_text(payload.get("aiDirectness"), 80) or "normal",
+        "ai_playfulness": _clean_text(payload.get("aiPlayfulness"), 80) or "normal",
+    }
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO dontsent_profiles (
+                user_id, onboarding_done, style_samples, style_profile, style_tags,
+                partner_nickname, partner_relation, partner_contact, partner_mbti,
+                partner_age, partner_gender, partner_job, ai_tone, ai_warmth,
+                ai_directness, ai_playfulness
+            )
+            VALUES (
+                %(user_id)s, %(onboarding_done)s, %(style_samples)s, %(style_profile)s, %(style_tags)s,
+                %(partner_nickname)s, %(partner_relation)s, %(partner_contact)s, %(partner_mbti)s,
+                %(partner_age)s, %(partner_gender)s, %(partner_job)s, %(ai_tone)s, %(ai_warmth)s,
+                %(ai_directness)s, %(ai_playfulness)s
+            )
+            ON DUPLICATE KEY UPDATE
+                onboarding_done=VALUES(onboarding_done),
+                style_samples=VALUES(style_samples),
+                style_profile=VALUES(style_profile),
+                style_tags=VALUES(style_tags),
+                partner_nickname=VALUES(partner_nickname),
+                partner_relation=VALUES(partner_relation),
+                partner_contact=VALUES(partner_contact),
+                partner_mbti=VALUES(partner_mbti),
+                partner_age=VALUES(partner_age),
+                partner_gender=VALUES(partner_gender),
+                partner_job=VALUES(partner_job),
+                ai_tone=VALUES(ai_tone),
+                ai_warmth=VALUES(ai_warmth),
+                ai_directness=VALUES(ai_directness),
+                ai_playfulness=VALUES(ai_playfulness)
+            """,
+            data,
+        )
+
+
+def _merge_saved_profile(payload):
+    user_id = _current_user_id()
+    if not user_id or payload.get("mode") == "work":
+        return payload
+    try:
+        with _db() as conn:
+            profile = _profile_payload(_fetch_profile(conn, user_id))
+    except Exception:
+        return payload
+    merged = dict(payload)
+    defaults = {
+        "relation": profile["relation"],
+        "contact": profile["contact"],
+        "mbti": profile["mbti"],
+        "age": profile["age"],
+        "gender": profile["gender"],
+        "job": profile["job"],
+        "styleSamples": profile["styleSamples"],
+        "styleProfile": profile["styleProfile"],
+        "partnerNickname": profile["partnerNickname"],
+        "aiTone": profile["aiTone"],
+        "aiWarmth": profile["aiWarmth"],
+        "aiDirectness": profile["aiDirectness"],
+        "aiPlayfulness": profile["aiPlayfulness"],
+    }
+    for key, value in defaults.items():
+        if value and not merged.get(key):
+            merged[key] = value
+    return merged
+
+
+def _auth_error():
+    return jsonify({"error": "auth_required"}), 401
+
+
 def _extract_json(text):
     try:
         return json.loads(text)
@@ -119,6 +368,7 @@ def _build_reply_prompt(payload):
             "상대 직급": payload.get("age") or "미입력",
             "관계 범위": payload.get("gender") or "미입력",
             "상대 직무": payload.get("job") or "미입력",
+            "AI 설정": f"톤={payload.get('aiTone') or 'balanced'}, 따뜻함={payload.get('aiWarmth') or 'normal'}, 단호함={payload.get('aiDirectness') or 'normal'}, 장난기={payload.get('aiPlayfulness') or 'normal'}",
             "받은 업무 메시지": message or "미입력",
             "내가 쓰려던 답장": draft or "미입력",
             "내 업무 말투 분석": style_profile or "미입력",
@@ -147,6 +397,7 @@ def _build_reply_prompt(payload):
 - 내 업무 말투 분석/샘플이 있으면 문장 길이, 말끝, 공손도, 완곡한 정도를 반영한다.
 - 단, 사용자의 말투가 거칠거나 책임을 키우는 방향이면 그대로 복제하지 말고 안전하게 다듬는다.
 - 작전 회의 맥락이 있으면 업무의 진짜 목적, 책임 범위, 기한, 상대와의 관계 긴장도를 우선 반영한다.
+- AI 설정이 있으면 따뜻함/단호함/장난기 비율을 반영하되 업무 신뢰도를 해치지 않는다.
 
 입력:
 {json.dumps(profile, ensure_ascii=False, indent=2)}
@@ -178,10 +429,12 @@ def _build_reply_prompt(payload):
         "연락 스타일": _label(payload.get("contact")),
         "내 목표": _label(payload.get("goal")),
         "추가 조정": adjust,
+        "상대 애칭": payload.get("partnerNickname") or "미입력",
         "상대 MBTI": (payload.get("mbti") or "미입력").strip().upper(),
         "상대 나이": payload.get("age") or "미입력",
         "상대 성별": payload.get("gender") or "미입력",
         "상대 직업": payload.get("job") or "미입력",
+        "AI 설정": f"톤={payload.get('aiTone') or 'balanced'}, 따뜻함={payload.get('aiWarmth') or 'normal'}, 단호함={payload.get('aiDirectness') or 'normal'}, 장난기={payload.get('aiPlayfulness') or 'normal'}",
         "상대가 보낸 톡": message or "미입력",
         "내가 쓰려던 답장": draft or "미입력",
         "내 말투 분석": style_profile or "미입력",
@@ -211,6 +464,8 @@ def _build_reply_prompt(payload):
 - 내 말투 분석/샘플이 있으면 문장 길이, 웃음 표현, 말끝, 장난 온도, 플러팅 방식, 거절 방식을 우선 반영한다.
 - 단, 내 말투를 따라 하더라도 집착, 압박, 조종처럼 보이는 습관은 고치고 말맛만 살린다.
 - 작전 회의 맥락이 있으면 마지막 분위기, 사용자의 속마음, 밀당 방향, 피해야 할 표현을 우선 반영한다.
+- 상대 애칭이 있으면 분석에는 참고하되 답장에 과하게 넣지 않는다.
+- AI 설정이 있으면 따뜻하게/단호하게/장난스럽게의 비율을 반영한다.
 
 말맛 예시:
 - 별로: "오늘은 집에서 쉬려고 해. 너는 뭐해?"
@@ -431,6 +686,11 @@ def _generate_gemini_chat(payload):
 
 
 def bootstrap(app, config):
+    app.flask.secret_key = os.environ.get("FLASK_SECRET_KEY", "dontsent-local-session-key")
+    app.flask.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+    )
     asset_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         "public",
@@ -442,9 +702,100 @@ def bootstrap(app, config):
     def flirt_mascot():
         return send_file(asset_path, mimetype="image/webp", max_age=31536000)
 
+    @app.flask.route("/api/session")
+    def api_session():
+        user_id = _current_user_id()
+        if not user_id:
+            return jsonify({"authenticated": False, "user": None, "profile": _profile_payload(None)})
+        try:
+            with _db() as conn:
+                user = _fetch_user(conn, user_id)
+                if not user:
+                    session.clear()
+                    return jsonify({"authenticated": False, "user": None, "profile": _profile_payload(None)})
+                profile = _profile_payload(_fetch_profile(conn, user_id))
+                return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
+        except Exception:
+            return jsonify({"error": "database_unavailable"}), 503
+
+    @app.flask.route("/api/auth/register", methods=["POST"])
+    def api_register():
+        payload = request.get_json(silent=True) or {}
+        email = _clean_text(payload.get("email"), 190).lower()
+        name = _clean_text(payload.get("name"), 80) or email.split("@")[0]
+        password = str(payload.get("password") or "")
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            return jsonify({"error": "invalid_email"}), 400
+        if len(password) < 8:
+            return jsonify({"error": "weak_password"}), 400
+        try:
+            with _db() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT id FROM dontsent_users WHERE email=%s", (email,))
+                    if cursor.fetchone():
+                        return jsonify({"error": "email_exists"}), 409
+                    cursor.execute(
+                        "INSERT INTO dontsent_users (email, name, password_hash) VALUES (%s, %s, %s)",
+                        (email, name, generate_password_hash(password)),
+                    )
+                    user_id = cursor.lastrowid
+                session.clear()
+                session["user_id"] = int(user_id)
+                user = _fetch_user(conn, user_id)
+                profile = _profile_payload(_fetch_profile(conn, user_id))
+                return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
+        except Exception:
+            return jsonify({"error": "database_unavailable"}), 503
+
+    @app.flask.route("/api/auth/login", methods=["POST"])
+    def api_login():
+        payload = request.get_json(silent=True) or {}
+        email = _clean_text(payload.get("email"), 190).lower()
+        password = str(payload.get("password") or "")
+        try:
+            with _db() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT * FROM dontsent_users WHERE email=%s", (email,))
+                    user = cursor.fetchone()
+                if not user or not check_password_hash(user["password_hash"], password):
+                    return jsonify({"error": "invalid_credentials"}), 401
+                session.clear()
+                session["user_id"] = int(user["id"])
+                profile = _profile_payload(_fetch_profile(conn, user["id"]))
+                return jsonify({"authenticated": True, "user": _public_user(user), "profile": profile})
+        except Exception:
+            return jsonify({"error": "database_unavailable"}), 503
+
+    @app.flask.route("/api/auth/logout", methods=["POST"])
+    def api_logout():
+        session.clear()
+        return jsonify({"ok": True})
+
+    @app.flask.route("/api/profile", methods=["GET", "POST", "DELETE"])
+    def api_profile():
+        user_id = _current_user_id()
+        if not user_id:
+            return _auth_error()
+        try:
+            with _db() as conn:
+                if request.method == "GET":
+                    return jsonify({"profile": _profile_payload(_fetch_profile(conn, user_id))})
+                if request.method == "DELETE":
+                    with conn.cursor() as cursor:
+                        cursor.execute("DELETE FROM dontsent_profiles WHERE user_id=%s", (user_id,))
+                    return jsonify({"profile": _profile_payload(None)})
+                payload = request.get_json(silent=True) or {}
+                _save_profile(conn, user_id, payload, onboarding_done=payload.get("onboardingDone", True))
+                return jsonify({"profile": _profile_payload(_fetch_profile(conn, user_id))})
+        except Exception:
+            return jsonify({"error": "database_unavailable"}), 503
+
     @app.flask.route("/api/replies", methods=["POST"])
     def api_replies():
+        if not _current_user_id():
+            return _auth_error()
         payload = request.get_json(silent=True) or {}
+        payload = _merge_saved_profile(payload)
         try:
             return jsonify(_generate_gemini_replies(payload))
         except RuntimeError as error:
@@ -458,7 +809,10 @@ def bootstrap(app, config):
 
     @app.flask.route("/api/chat", methods=["POST"])
     def api_chat():
+        if not _current_user_id():
+            return _auth_error()
         payload = request.get_json(silent=True) or {}
+        payload = _merge_saved_profile(payload)
         try:
             return jsonify(_generate_gemini_chat(payload))
         except RuntimeError as error:
@@ -671,6 +1025,24 @@ def bootstrap(app, config):
             color: #fff;
         }
 
+        .profile-menu-button {
+            display: none;
+            flex: 0 0 auto;
+            min-height: 37px;
+            padding: 5px 10px 4px;
+            background: var(--pink);
+            border: var(--line);
+            border-radius: 999px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 950;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .phone.app-state .profile-menu-button {
+            display: block;
+        }
+
         .signal {
             padding: 7px 9px 6px;
             background: var(--lime);
@@ -687,6 +1059,453 @@ def bootstrap(app, config):
             position: relative;
             z-index: 1;
             padding: 18px 16px 120px;
+        }
+
+        .auth-screen,
+        .intro-screen,
+        .onboarding-screen,
+        .profile-drawer {
+            position: relative;
+            z-index: 20;
+            display: none;
+        }
+
+        .phone.auth-state .auth-screen,
+        .phone.intro-state .intro-screen,
+        .phone.onboarding-state .onboarding-screen {
+            display: block;
+        }
+
+        .phone.auth-state .topbar,
+        .phone.auth-state .stage,
+        .phone.intro-state .topbar,
+        .phone.intro-state .stage,
+        .phone.onboarding-state .topbar,
+        .phone.onboarding-state .stage {
+            display: none;
+        }
+
+        .auth-screen,
+        .intro-screen,
+        .onboarding-screen {
+            min-height: 100svh;
+            padding: max(22px, env(safe-area-inset-top)) 18px 42px;
+        }
+
+        .auth-card,
+        .onboarding-card,
+        .profile-card {
+            position: relative;
+            background: var(--cream);
+            border: var(--line);
+            border-radius: 14px;
+            box-shadow: 8px 8px 0 var(--ink);
+        }
+
+        .auth-card {
+            margin-top: 44px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .auth-logo {
+            display: grid;
+            place-items: center;
+            width: 68px;
+            height: 68px;
+            margin-bottom: 18px;
+            background: var(--blue);
+            border: var(--line);
+            border-radius: 50%;
+            color: #fff;
+            font-family: "Bagel Fat One", "Jua", system-ui, sans-serif;
+            font-size: 34px;
+            box-shadow: 5px 5px 0 var(--ink);
+            transform: rotate(-8deg);
+        }
+
+        .auth-card h2,
+        .intro-copy h2,
+        .onboarding-card h2,
+        .profile-card h2 {
+            margin: 0;
+            font-family: "Bagel Fat One", "Jua", system-ui, sans-serif;
+            font-weight: 400;
+            letter-spacing: 0;
+        }
+
+        .auth-card h2 {
+            font-size: 42px;
+            line-height: .95;
+        }
+
+        .auth-card p,
+        .intro-copy p,
+        .onboarding-card p,
+        .profile-card p {
+            margin: 10px 0 0;
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        .auth-tabs,
+        .profile-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 20px 0 14px;
+        }
+
+        .auth-tab,
+        .profile-tab {
+            min-height: 42px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 999px;
+            font-weight: 950;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .auth-tab.is-active,
+        .profile-tab.is-active {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .auth-form input,
+        .onboarding-card input,
+        .onboarding-card textarea,
+        .profile-card input,
+        .profile-card textarea {
+            width: 100%;
+            padding: 14px 15px 12px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 10px;
+            box-shadow: 4px 4px 0 var(--ink);
+            color: var(--ink);
+            font-size: 18px;
+            font-weight: 950;
+            outline: 0;
+        }
+
+        .auth-form input[name="name"] {
+            display: none;
+        }
+
+        .auth-form.is-register input[name="name"] {
+            display: block;
+        }
+
+        .primary-action,
+        .secondary-action,
+        .danger-action {
+            min-height: 54px;
+            padding: 12px 16px 10px;
+            border: var(--line);
+            border-radius: 10px;
+            font-size: 17px;
+            font-weight: 950;
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .primary-action {
+            background: var(--orange);
+            color: #fff;
+        }
+
+        .secondary-action {
+            background: #fff;
+            color: var(--ink);
+        }
+
+        .danger-action {
+            background: var(--pink);
+            color: #fff;
+        }
+
+        .auth-error,
+        .profile-status {
+            min-height: 20px;
+            color: #ff2d75;
+            font-size: 13px;
+            font-weight: 950;
+        }
+
+        .story-board {
+            display: grid;
+            gap: 12px;
+            min-height: 430px;
+            padding-top: 18px;
+        }
+
+        .story-panel {
+            position: relative;
+            min-height: 86px;
+            padding: 13px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 12px;
+            box-shadow: 5px 5px 0 var(--ink);
+            overflow: hidden;
+            opacity: 0;
+            transform: translateX(32px) rotate(2deg);
+            animation: storySlide 4.8s ease-in-out both;
+        }
+
+        .story-panel:nth-child(2) {
+            animation-delay: .65s;
+            transform: translateX(-32px) rotate(-2deg);
+        }
+
+        .story-panel:nth-child(3) {
+            animation-delay: 1.3s;
+        }
+
+        .story-panel:nth-child(4) {
+            animation-delay: 1.95s;
+            background: var(--lime);
+        }
+
+        .phone-bubble {
+            display: grid;
+            gap: 7px;
+            max-width: 210px;
+            margin-left: auto;
+            padding: 10px 12px;
+            background: #b9fff0;
+            border: var(--line);
+            border-radius: 14px 14px 4px 14px;
+            font-size: 15px;
+            font-weight: 950;
+        }
+
+        .panic-face {
+            display: inline-grid;
+            place-items: center;
+            width: 76px;
+            height: 76px;
+            background: var(--pink);
+            border: var(--line);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 38px;
+            box-shadow: 4px 4px 0 var(--ink);
+            animation: panicShake .55s steps(2, end) infinite;
+        }
+
+        .clock-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 28px;
+            font-weight: 950;
+        }
+
+        .clock-dot {
+            width: 22px;
+            height: 22px;
+            background: var(--blue);
+            border: var(--line);
+            border-radius: 50%;
+            animation: clockRun .8s linear infinite;
+        }
+
+        .boom {
+            display: grid;
+            place-items: center;
+            min-height: 116px;
+            font-family: "Bagel Fat One", "Jua", system-ui, sans-serif;
+            font-size: 46px;
+            color: var(--ink);
+            text-shadow: 3px 3px 0 #fff;
+            transform: rotate(-8deg);
+        }
+
+        .intro-copy {
+            margin-top: 18px;
+            padding: 18px;
+            background: var(--cream);
+            border: var(--line);
+            border-radius: 14px;
+            box-shadow: 8px 8px 0 var(--ink);
+            opacity: 0;
+            transform: translateY(22px);
+            animation: introCopyIn .35s ease-out 3.25s both;
+        }
+
+        .intro-copy h2 {
+            font-size: 30px;
+            line-height: 1;
+        }
+
+        .intro-copy .primary-action {
+            width: 100%;
+            margin-top: 16px;
+        }
+
+        .onboarding-card {
+            padding: 18px;
+        }
+
+        .onboarding-step {
+            display: none;
+        }
+
+        .onboarding-step.is-active {
+            display: grid;
+            gap: 14px;
+        }
+
+        .onboarding-progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .onboarding-progress span {
+            flex: 1;
+            height: 10px;
+            background: #fff;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+        }
+
+        .onboarding-progress span.is-active {
+            background: var(--pink);
+        }
+
+        .onboard-prompt {
+            padding: 13px;
+            background: #b9fff0;
+            border: var(--line);
+            border-radius: 12px;
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .onboard-prompt small {
+            display: inline-block;
+            margin-bottom: 7px;
+            padding: 4px 8px;
+            background: var(--ink);
+            border-radius: 999px;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .onboard-answer-list {
+            display: flex;
+            gap: 7px;
+            overflow-x: auto;
+            padding: 2px 0 8px;
+        }
+
+        .onboard-answer-list span {
+            flex: 0 0 auto;
+            max-width: 190px;
+            padding: 8px 10px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 999px;
+            box-shadow: 3px 3px 0 var(--ink);
+            font-size: 13px;
+            font-weight: 950;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .onboard-grid,
+        .profile-edit-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .onboard-grid .wide,
+        .profile-edit-grid .wide {
+            grid-column: 1 / -1;
+        }
+
+        .onboard-actions,
+        .profile-actions {
+            display: grid;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .profile-drawer {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            padding: 18px;
+            background: rgba(23, 19, 15, .48);
+            overflow-y: auto;
+        }
+
+        .profile-drawer.is-open {
+            display: block;
+        }
+
+        .profile-card {
+            max-width: 430px;
+            margin: 0 auto;
+            padding: 18px;
+        }
+
+        .profile-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .profile-close {
+            width: 38px;
+            height: 38px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 50%;
+            font-size: 22px;
+            font-weight: 950;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .profile-pane {
+            display: none;
+            gap: 12px;
+        }
+
+        .profile-pane.is-active {
+            display: grid;
+        }
+
+        .setting-chips {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .setting-chip {
+            min-height: 44px;
+            padding: 8px;
+            background: #fff;
+            border: var(--line);
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 950;
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        .setting-chip.is-active {
+            background: var(--blue);
+            color: #fff;
         }
 
         .marquee {
@@ -2901,6 +3720,43 @@ def bootstrap(app, config):
             }
         }
 
+        @keyframes storySlide {
+            0% {
+                opacity: 0;
+                transform: translateX(32px) rotate(2deg) scale(.96);
+            }
+            18%, 82% {
+                opacity: 1;
+                transform: translateX(0) rotate(0) scale(1);
+            }
+            100% {
+                opacity: .18;
+                transform: translateX(-18px) rotate(-1deg) scale(.98);
+            }
+        }
+
+        @keyframes panicShake {
+            0%, 100% {
+                transform: rotate(-4deg) translateX(0);
+            }
+            50% {
+                transform: rotate(5deg) translateX(4px);
+            }
+        }
+
+        @keyframes clockRun {
+            to {
+                transform: translateX(168px) rotate(360deg);
+            }
+        }
+
+        @keyframes introCopyIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .mascot-scene,
             .date-starburst,
@@ -2918,6 +3774,10 @@ def bootstrap(app, config):
             .office-paper,
             .phone::before,
             .phone::after,
+            .story-panel,
+            .panic-face,
+            .clock-dot,
+            .intro-copy,
             .marquee span {
                 animation: none;
             }
@@ -2925,7 +3785,112 @@ def bootstrap(app, config):
     </style>
 </head>
 <body>
-    <main class="phone" aria-label="RE:BOUND reply generator">
+    <main class="phone auth-state" aria-label="RE:BOUND reply generator">
+        <section class="auth-screen" id="auth-screen" aria-label="login">
+            <div class="auth-card">
+                <div class="auth-logo">R</div>
+                <h2>RE:BOUND</h2>
+                <p>답장 못 보내고 핸드폰만 노려보는 시간, 이제 조금 줄여보자.</p>
+                <div class="auth-tabs" role="group" aria-label="auth mode">
+                    <button class="auth-tab is-active" type="button" data-auth-mode="login">로그인</button>
+                    <button class="auth-tab" type="button" data-auth-mode="register">회원가입</button>
+                </div>
+                <form class="auth-form" id="auth-form">
+                    <input name="name" maxlength="80" autocomplete="name" placeholder="이름 또는 닉네임">
+                    <input name="email" type="email" maxlength="190" autocomplete="email" placeholder="이메일">
+                    <input name="password" type="password" minlength="8" autocomplete="current-password" placeholder="비밀번호 8자 이상">
+                    <button class="primary-action" id="auth-submit" type="submit">로그인</button>
+                    <div class="auth-error" id="auth-error" role="alert"></div>
+                </form>
+            </div>
+        </section>
+
+        <section class="intro-screen" id="intro-screen" aria-label="date intro">
+            <div class="story-board" aria-hidden="true">
+                <div class="story-panel">
+                    <div class="phone-bubble">
+                        <small>하트</small>
+                        <strong>오늘 뭐해?</strong>
+                    </div>
+                </div>
+                <div class="story-panel">
+                    <span class="panic-face">?!</span>
+                    <strong>손가락은 멈추고 머리만 과열</strong>
+                </div>
+                <div class="story-panel">
+                    <div class="clock-row">
+                        <span>1분</span>
+                        <span>7분</span>
+                        <span>23분</span>
+                    </div>
+                    <span class="clock-dot"></span>
+                </div>
+                <div class="story-panel">
+                    <div class="boom">펑</div>
+                </div>
+            </div>
+            <div class="intro-copy">
+                <h2>여전히 답장하기 어려우신가요?</h2>
+                <p>제가 도와드리겠습니다. 일단 여러분의 말투를 분석할게요. 최대한 그걸 반영해서 답변을 생성해드립니다.</p>
+                <p>제가 드리는 여러 질문과 상황에 최대한 솔직하게 답장을 해주시면 됩니다.</p>
+                <button class="primary-action" id="intro-start" type="button">말투 분석 시작</button>
+            </div>
+        </section>
+
+        <section class="onboarding-screen" id="onboarding-screen" aria-label="onboarding">
+            <div class="onboarding-card">
+                <div class="onboarding-progress">
+                    <span class="is-active" data-onboard-progress="0"></span>
+                    <span data-onboard-progress="1"></span>
+                </div>
+                <div class="onboarding-step is-active" data-onboard-step="voice">
+                    <h2>내 말투부터 장착</h2>
+                    <p>상대가 이런 말을 했다고 치고, 내가 보낼 답장만 써줘.</p>
+                    <div class="onboard-prompt">
+                        <small id="onboard-count">01/05</small>
+                        <strong id="onboard-question">오늘 뭐해?</strong>
+                    </div>
+                    <textarea id="onboard-answer" maxlength="180" placeholder="나 지금 집이랑 한 몸 됨ㅋㅋ 너는?"></textarea>
+                    <div class="onboard-answer-list" id="onboard-answer-list"></div>
+                    <div class="onboard-actions">
+                        <button class="primary-action" id="onboard-next-answer" type="button">다음 답장</button>
+                        <button class="secondary-action" id="onboard-skip-voice" type="button">이 정도면 됐어</button>
+                    </div>
+                </div>
+                <div class="onboarding-step" data-onboard-step="partner">
+                    <h2>여러분의 그대는 어떤 사람인가요?</h2>
+                    <p>애칭이랑 대략적인 정보만 알려줘. 단정용이 아니라 답장 온도 조절용이야.</p>
+                    <div class="onboard-grid">
+                        <label class="wide">애칭<input id="onboard-nickname" maxlength="120" placeholder="하트, 민수, 그 사람"></label>
+                        <label>MBTI<input id="onboard-mbti" maxlength="4" placeholder="ENFP"></label>
+                        <label>직업<input id="onboard-job" maxlength="160" placeholder="디자이너"></label>
+                        <label>나이<input id="onboard-age" maxlength="80" placeholder="20대 후반"></label>
+                        <label>성별<input id="onboard-gender" maxlength="80" placeholder="상관없음"></label>
+                    </div>
+                    <div class="panel-title">지금 둘 사이</div>
+                    <div class="chips wrap onboard-chips" data-onboard-group="relation">
+                        <button class="chip is-active" type="button" data-value="crush">썸 타는 중</button>
+                        <button class="chip" type="button" data-value="first">처음 연락</button>
+                        <button class="chip" type="button" data-value="date1">한 번 만남</button>
+                        <button class="chip" type="button" data-value="fading">애매하게 식는 중</button>
+                        <button class="chip" type="button" data-value="friend">친구인데 묘함</button>
+                    </div>
+                    <div class="panel-title">연락 스타일</div>
+                    <div class="chips wrap onboard-chips" data-onboard-group="contact">
+                        <button class="chip is-active" type="button" data-value="normal">보통</button>
+                        <button class="chip" type="button" data-value="fast">답장 빠름</button>
+                        <button class="chip" type="button" data-value="slow">느림</button>
+                        <button class="chip" type="button" data-value="dry">질문 적음</button>
+                        <button class="chip" type="button" data-value="long">장문형</button>
+                    </div>
+                    <div class="onboard-actions">
+                        <button class="primary-action" id="onboard-finish" type="button">저장하고 시작</button>
+                        <button class="secondary-action" id="onboard-back" type="button">말투 더 쓰기</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <header class="topbar">
             <div class="brand">R</div>
             <div class="brand-copy">
@@ -2936,6 +3901,7 @@ def bootstrap(app, config):
                 <button class="mode-button is-active" type="button" data-mode="date" aria-pressed="true">썸톡</button>
                 <button class="mode-button" type="button" data-mode="work" aria-pressed="false">직장</button>
             </div>
+            <button class="profile-menu-button" id="profile-menu" type="button">프로필</button>
         </header>
 
         <section class="stage">
@@ -3161,6 +4127,74 @@ def bootstrap(app, config):
             <section class="replies is-empty" id="replies" aria-live="polite"></section>
         </section>
 
+        <section class="profile-drawer" id="profile-drawer" aria-label="profile editor">
+            <div class="profile-card">
+                <div class="profile-head">
+                    <div>
+                        <h2>내 프로필</h2>
+                        <p id="profile-user-line">말투랑 상대 정보, 여기서 다시 만질 수 있어.</p>
+                    </div>
+                    <button class="profile-close" id="profile-close" type="button" aria-label="close">×</button>
+                </div>
+                <div class="profile-tabs" role="group" aria-label="profile tabs">
+                    <button class="profile-tab is-active" type="button" data-profile-pane="profile">말투/상대</button>
+                    <button class="profile-tab" type="button" data-profile-pane="ai">AI 설정</button>
+                </div>
+                <div class="profile-pane is-active" data-profile-pane-body="profile">
+                    <div class="profile-edit-grid">
+                        <label class="wide">내 말투 요약<input id="profile-style-profile" maxlength="500" placeholder="짧게 침 / 웃음 자주 / 장난 섞음"></label>
+                        <label class="wide">내 말투 샘플<textarea id="profile-style-samples" maxlength="3000" placeholder="상대: 오늘 뭐해?\n나: 나 지금 집이랑 한 몸 됨ㅋㅋ 너는?"></textarea></label>
+                        <label>애칭<input id="profile-nickname" maxlength="120" placeholder="하트"></label>
+                        <label>MBTI<input id="profile-mbti" maxlength="4" placeholder="ENFP"></label>
+                        <label>나이<input id="profile-age" maxlength="80" placeholder="20대 후반"></label>
+                        <label>성별<input id="profile-gender" maxlength="80" placeholder="상관없음"></label>
+                        <label class="wide">직업<input id="profile-job" maxlength="160" placeholder="디자이너"></label>
+                    </div>
+                    <div class="panel-title">관계</div>
+                    <div class="chips wrap profile-chips" data-profile-group="relation">
+                        <button class="chip is-active" type="button" data-value="crush">썸 타는 중</button>
+                        <button class="chip" type="button" data-value="first">처음 연락</button>
+                        <button class="chip" type="button" data-value="date1">한 번 만남</button>
+                        <button class="chip" type="button" data-value="fading">애매하게 식는 중</button>
+                        <button class="chip" type="button" data-value="friend">친구인데 묘함</button>
+                        <button class="chip" type="button" data-value="ex">전 애인/재회각</button>
+                    </div>
+                    <div class="panel-title">연락 스타일</div>
+                    <div class="chips wrap profile-chips" data-profile-group="contact">
+                        <button class="chip is-active" type="button" data-value="normal">보통</button>
+                        <button class="chip" type="button" data-value="fast">답장 빠름</button>
+                        <button class="chip" type="button" data-value="slow">느림</button>
+                        <button class="chip" type="button" data-value="dry">질문 적음</button>
+                        <button class="chip" type="button" data-value="long">장문형</button>
+                        <button class="chip" type="button" data-value="seen">읽씹 있음</button>
+                    </div>
+                </div>
+                <div class="profile-pane" data-profile-pane-body="ai">
+                    <p>기본 답장 성격을 정해둘 수 있어. 답장마다 톤 다시 굴리기도 계속 가능해.</p>
+                    <div class="panel-title">기본 톤</div>
+                    <div class="setting-chips" data-setting-group="aiTone">
+                        <button class="setting-chip is-active" type="button" data-value="balanced">균형있게</button>
+                        <button class="setting-chip" type="button" data-value="warm">따뜻하게</button>
+                        <button class="setting-chip" type="button" data-value="firm">단호하게</button>
+                        <button class="setting-chip" type="button" data-value="playful">통통 튀게</button>
+                    </div>
+                    <div class="panel-title">말맛</div>
+                    <div class="setting-chips" data-setting-group="aiPlayfulness">
+                        <button class="setting-chip is-active" type="button" data-value="normal">적당히</button>
+                        <button class="setting-chip" type="button" data-value="low">담백하게</button>
+                        <button class="setting-chip" type="button" data-value="high">장난 더</button>
+                        <button class="setting-chip" type="button" data-value="no_ai">AI 티 제거</button>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="primary-action" id="profile-save" type="button">프로필 저장</button>
+                    <button class="danger-action" id="profile-delete" type="button">말투/상대 정보 삭제</button>
+                    <button class="secondary-action" id="logout" type="button">로그아웃</button>
+                    <div class="profile-status" id="profile-status"></div>
+                </div>
+            </div>
+        </section>
+
         <div class="toast" id="toast">복사됨. 이제 자연스러운 척만 하면 됨.</div>
     </main>
 
@@ -3239,9 +4273,52 @@ def bootstrap(app, config):
         const dice = document.querySelector("#dice");
         const composer = document.querySelector("#composer");
         const toast = document.querySelector("#toast");
+        const authScreen = document.querySelector("#auth-screen");
+        const authForm = document.querySelector("#auth-form");
+        const authTabs = [...document.querySelectorAll(".auth-tab")];
+        const authSubmit = document.querySelector("#auth-submit");
+        const authError = document.querySelector("#auth-error");
+        const introScreen = document.querySelector("#intro-screen");
+        const introStart = document.querySelector("#intro-start");
+        const onboardingScreen = document.querySelector("#onboarding-screen");
+        const onboardAnswer = document.querySelector("#onboard-answer");
+        const onboardCount = document.querySelector("#onboard-count");
+        const onboardQuestion = document.querySelector("#onboard-question");
+        const onboardAnswerList = document.querySelector("#onboard-answer-list");
+        const onboardNextAnswer = document.querySelector("#onboard-next-answer");
+        const onboardSkipVoice = document.querySelector("#onboard-skip-voice");
+        const onboardFinish = document.querySelector("#onboard-finish");
+        const onboardBack = document.querySelector("#onboard-back");
+        const onboardNickname = document.querySelector("#onboard-nickname");
+        const onboardMbti = document.querySelector("#onboard-mbti");
+        const onboardAge = document.querySelector("#onboard-age");
+        const onboardGender = document.querySelector("#onboard-gender");
+        const onboardJob = document.querySelector("#onboard-job");
+        const profileMenu = document.querySelector("#profile-menu");
+        const profileDrawer = document.querySelector("#profile-drawer");
+        const profileClose = document.querySelector("#profile-close");
+        const profileUserLine = document.querySelector("#profile-user-line");
+        const profileSave = document.querySelector("#profile-save");
+        const profileDelete = document.querySelector("#profile-delete");
+        const profileStatus = document.querySelector("#profile-status");
+        const logout = document.querySelector("#logout");
+        const profileFields = {
+            styleProfile: document.querySelector("#profile-style-profile"),
+            styleSamples: document.querySelector("#profile-style-samples"),
+            partnerNickname: document.querySelector("#profile-nickname"),
+            mbti: document.querySelector("#profile-mbti"),
+            age: document.querySelector("#profile-age"),
+            gender: document.querySelector("#profile-gender"),
+            job: document.querySelector("#profile-job")
+        };
         const briefRelation = document.querySelector("#briefRelation");
         const briefProfile = document.querySelector("#briefProfile");
         const briefRisk = document.querySelector("#briefRisk");
+        let currentUser = null;
+        let savedProfile = null;
+        let authMode = "login";
+        let onboardAnswers = [];
+        let onboardPromptIndex = 0;
         let hasRecommendation = false;
         let currentMode = "date";
         let activeResultView = "cards";
@@ -3567,6 +4644,288 @@ def bootstrap(app, config):
             work: null
         };
 
+        function setAppScreen(screen) {
+            phone.classList.toggle("auth-state", screen === "auth");
+            phone.classList.toggle("intro-state", screen === "intro");
+            phone.classList.toggle("onboarding-state", screen === "onboarding");
+            phone.classList.toggle("app-state", screen === "app");
+        }
+
+        async function apiFetch(url, options = {}) {
+            const response = await fetch(url, {
+                credentials: "same-origin",
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(options.headers || {})
+                }
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const error = new Error(body.error || "request_failed");
+                error.payload = body;
+                throw error;
+            }
+            return body;
+        }
+
+        function authMessage(code) {
+            return {
+                invalid_email: "이메일 형식이 살짝 이상해.",
+                weak_password: "비밀번호는 8자 이상으로 가자.",
+                email_exists: "이미 가입된 이메일이야.",
+                invalid_credentials: "이메일이나 비밀번호가 안 맞아.",
+                database_unavailable: "DB 연결이 잠깐 안 돼. 설정 확인이 필요해.",
+                auth_required: "로그인이 필요해."
+            }[code] || "잠깐 삐끗했어. 다시 시도해줘.";
+        }
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            authTabs.forEach((button) => {
+                const active = button.dataset.authMode === mode;
+                button.classList.toggle("is-active", active);
+            });
+            authForm.classList.toggle("is-register", mode === "register");
+            authSubmit.textContent = mode === "register" ? "회원가입" : "로그인";
+            authForm.password.autocomplete = mode === "register" ? "new-password" : "current-password";
+            authError.textContent = "";
+        }
+
+        async function submitAuth(event) {
+            event.preventDefault();
+            authSubmit.disabled = true;
+            authError.textContent = "";
+            const payload = {
+                name: authForm.name.value,
+                email: authForm.email.value,
+                password: authForm.password.value
+            };
+            try {
+                const result = await apiFetch(`/api/auth/${authMode}`, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                });
+                await enterSession(result);
+            } catch (error) {
+                authError.textContent = authMessage(error.message);
+            } finally {
+                authSubmit.disabled = false;
+            }
+        }
+
+        async function enterSession(result) {
+            currentUser = result.user;
+            savedProfile = result.profile || defaultSavedProfile();
+            hydrateSavedProfile(savedProfile);
+            if (!savedProfile.onboardingDone) {
+                setAppScreen("intro");
+                applyMode("date");
+                return;
+            }
+            applySavedProfileToApp();
+            setAppScreen("app");
+            applyMode("date");
+        }
+
+        function defaultSavedProfile() {
+            return {
+                onboardingDone: false,
+                styleSamples: "",
+                styleProfile: "",
+                styleTags: [],
+                partnerNickname: "",
+                relation: "crush",
+                contact: "normal",
+                mbti: "",
+                age: "",
+                gender: "",
+                job: "",
+                aiTone: "balanced",
+                aiWarmth: "normal",
+                aiDirectness: "normal",
+                aiPlayfulness: "normal"
+            };
+        }
+
+        function hydrateSavedProfile(profile) {
+            savedProfile = { ...defaultSavedProfile(), ...(profile || {}) };
+            profileUserLine.textContent = currentUser ? `${currentUser.name} · ${currentUser.email}` : "말투랑 상대 정보, 여기서 다시 만질 수 있어.";
+            profileFields.styleProfile.value = savedProfile.styleProfile || "";
+            profileFields.styleSamples.value = savedProfile.styleSamples || "";
+            profileFields.partnerNickname.value = savedProfile.partnerNickname || "";
+            profileFields.mbti.value = savedProfile.mbti || "";
+            profileFields.age.value = savedProfile.age || "";
+            profileFields.gender.value = savedProfile.gender || "";
+            profileFields.job.value = savedProfile.job || "";
+            setProfileChip("relation", savedProfile.relation || "crush");
+            setProfileChip("contact", savedProfile.contact || "normal");
+            setSetting("aiTone", savedProfile.aiTone || "balanced");
+            setSetting("aiPlayfulness", savedProfile.aiPlayfulness || "normal");
+        }
+
+        function setProfileChip(group, value) {
+            document.querySelectorAll(`[data-profile-group="${group}"] .chip`).forEach((button) => {
+                button.classList.toggle("is-active", button.dataset.value === value);
+            });
+        }
+
+        function activeProfileValue(group) {
+            return document.querySelector(`[data-profile-group="${group}"] .chip.is-active`)?.dataset.value || "";
+        }
+
+        function setSetting(group, value) {
+            document.querySelectorAll(`[data-setting-group="${group}"] .setting-chip`).forEach((button) => {
+                button.classList.toggle("is-active", button.dataset.value === value);
+            });
+        }
+
+        function activeSetting(group) {
+            return document.querySelector(`[data-setting-group="${group}"] .setting-chip.is-active`)?.dataset.value || "";
+        }
+
+        function applySavedProfileToApp() {
+            if (!savedProfile) return;
+            modeState.date = {
+                ...(modeState.date || defaultModeState("date")),
+                relation: savedProfile.relation || "crush",
+                contact: savedProfile.contact || "normal",
+                mbti: savedProfile.mbti || "",
+                age: savedProfile.age || "",
+                gender: savedProfile.gender || "",
+                job: savedProfile.job || "",
+                styleSamples: savedProfile.styleSamples || "",
+                styleProfile: savedProfile.styleProfile || "",
+                styleProfileTags: [...(savedProfile.styleTags || [])],
+                styleAnswers: [],
+                styleCurrentAnswer: ""
+            };
+            if (currentMode === "date") {
+                hasAppliedMode = false;
+                applyMode("date");
+            }
+        }
+
+        function collectProfilePayload({ onboardingDone = true } = {}) {
+            return {
+                onboardingDone,
+                styleSamples: profileFields.styleSamples.value.trim(),
+                styleProfile: profileFields.styleProfile.value.trim(),
+                styleTags: profileFields.styleProfile.value.trim() ? profileFields.styleProfile.value.split("/").map((tag) => tag.trim()).filter(Boolean).slice(0, 8) : [],
+                partnerNickname: profileFields.partnerNickname.value.trim(),
+                relation: activeProfileValue("relation") || savedProfile?.relation || activeOnboardValue("relation") || "crush",
+                contact: activeProfileValue("contact") || savedProfile?.contact || activeOnboardValue("contact") || "normal",
+                mbti: profileFields.mbti.value.trim().toUpperCase(),
+                age: profileFields.age.value.trim(),
+                gender: profileFields.gender.value.trim(),
+                job: profileFields.job.value.trim(),
+                aiTone: activeSetting("aiTone") || "balanced",
+                aiWarmth: activeSetting("aiTone") === "warm" ? "high" : "normal",
+                aiDirectness: activeSetting("aiTone") === "firm" ? "high" : "normal",
+                aiPlayfulness: activeSetting("aiPlayfulness") || "normal"
+            };
+        }
+
+        async function saveProfile(payload, { toastMessage = "프로필 저장 완료." } = {}) {
+            const result = await apiFetch("/api/profile", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            hydrateSavedProfile(result.profile);
+            applySavedProfileToApp();
+            profileStatus.textContent = toastMessage;
+            showToast(toastMessage);
+            return result.profile;
+        }
+
+        function activeOnboardValue(group) {
+            return document.querySelector(`[data-onboard-group="${group}"] .chip.is-active`)?.dataset.value || "";
+        }
+
+        function renderOnboardPrompt() {
+            const prompts = modes.date.stylePrompts;
+            onboardPromptIndex = ((onboardPromptIndex % prompts.length) + prompts.length) % prompts.length;
+            onboardCount.textContent = `${String(onboardPromptIndex + 1).padStart(2, "0")}/${String(prompts.length).padStart(2, "0")}`;
+            onboardQuestion.textContent = prompts[onboardPromptIndex];
+            onboardAnswer.value = onboardAnswers[onboardPromptIndex] || "";
+            onboardAnswerList.innerHTML = onboardAnswers
+                .map((answer, index) => answer ? `<span>${String(index + 1).padStart(2, "0")} ${answer}</span>` : "")
+                .join("");
+        }
+
+        function saveOnboardAnswer({ quiet = false } = {}) {
+            const answer = onboardAnswer.value.trim();
+            if (!answer) {
+                if (!quiet) {
+                    showToast("내 답장 한 줄만 써줘. 진짜 짧아도 돼.");
+                    onboardAnswer.focus();
+                }
+                return false;
+            }
+            onboardAnswers[onboardPromptIndex] = answer;
+            return true;
+        }
+
+        function goOnboardPartner() {
+            saveOnboardAnswer({ quiet: true });
+            const samples = buildOnboardSamples();
+            const voice = samples ? analyzeVoice(samples) : { text: "무난한 자연체", tags: ["무난한 자연체"], count: 0 };
+            profileFields.styleSamples.value = samples;
+            profileFields.styleProfile.value = voice.text;
+            document.querySelector('[data-onboard-step="voice"]').classList.remove("is-active");
+            document.querySelector('[data-onboard-step="partner"]').classList.add("is-active");
+            document.querySelector('[data-onboard-progress="0"]').classList.remove("is-active");
+            document.querySelector('[data-onboard-progress="1"]').classList.add("is-active");
+        }
+
+        function buildOnboardSamples() {
+            return onboardAnswers
+                .map((answer, index) => {
+                    const text = (answer || "").trim();
+                    if (!text) return "";
+                    return `상대: ${modes.date.stylePrompts[index]}\n나: ${text}`;
+                })
+                .filter(Boolean)
+                .join("\n\n");
+        }
+
+        async function finishOnboarding() {
+            const samples = buildOnboardSamples();
+            const voice = samples ? analyzeVoice(samples) : { text: "무난한 자연체", tags: ["무난한 자연체"], count: 0 };
+            const relation = activeOnboardValue("relation") || "crush";
+            const contact = activeOnboardValue("contact") || "normal";
+            const payload = {
+                onboardingDone: true,
+                styleSamples: samples,
+                styleProfile: voice.text,
+                styleTags: voice.tags,
+                partnerNickname: onboardNickname.value.trim(),
+                relation,
+                contact,
+                mbti: onboardMbti.value.trim().toUpperCase(),
+                age: onboardAge.value.trim(),
+                gender: onboardGender.value.trim(),
+                job: onboardJob.value.trim(),
+                aiTone: "balanced",
+                aiWarmth: "normal",
+                aiDirectness: "normal",
+                aiPlayfulness: "normal"
+            };
+            onboardFinish.disabled = true;
+            try {
+                const profile = await saveProfile(payload, { toastMessage: "온보딩 저장 완료. 이제 바로 답장 짜자." });
+                hydrateSavedProfile(profile);
+                applySavedProfileToApp();
+                setAppScreen("app");
+                applyMode("date");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            } catch (error) {
+                showToast(authMessage(error.message));
+            } finally {
+                onboardFinish.disabled = false;
+            }
+        }
+
         function activeValue(groupName) {
             return document.querySelector(`[data-group="${groupName}"] .is-active`).dataset.value;
         }
@@ -3761,6 +5120,11 @@ def bootstrap(app, config):
                 age: fields.age.dataset.value,
                 gender: fields.gender.dataset.value,
                 job: fields.job.value.trim(),
+                partnerNickname: savedProfile?.partnerNickname || "",
+                aiTone: savedProfile?.aiTone || "balanced",
+                aiWarmth: savedProfile?.aiWarmth || "normal",
+                aiDirectness: savedProfile?.aiDirectness || "normal",
+                aiPlayfulness: savedProfile?.aiPlayfulness || "normal",
                 draft: cleanDraft(),
                 styleSamples: cleanStyleSamples(),
                 styleProfile,
@@ -4509,6 +5873,102 @@ def bootstrap(app, config):
             hasAppliedMode = true;
         }
 
+        authTabs.forEach((button) => {
+            button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
+        });
+        authForm.addEventListener("submit", submitAuth);
+        introStart.addEventListener("click", () => {
+            setAppScreen("onboarding");
+            renderOnboardPrompt();
+        });
+        onboardNextAnswer.addEventListener("click", () => {
+            if (!saveOnboardAnswer()) return;
+            onboardPromptIndex += 1;
+            if (onboardPromptIndex >= modes.date.stylePrompts.length) {
+                goOnboardPartner();
+                return;
+            }
+            renderOnboardPrompt();
+        });
+        onboardSkipVoice.addEventListener("click", goOnboardPartner);
+        onboardBack.addEventListener("click", () => {
+            document.querySelector('[data-onboard-step="partner"]').classList.remove("is-active");
+            document.querySelector('[data-onboard-step="voice"]').classList.add("is-active");
+            document.querySelector('[data-onboard-progress="1"]').classList.remove("is-active");
+            document.querySelector('[data-onboard-progress="0"]').classList.add("is-active");
+            renderOnboardPrompt();
+        });
+        onboardFinish.addEventListener("click", finishOnboarding);
+        onboardMbti.addEventListener("input", () => {
+            onboardMbti.value = onboardMbti.value.toUpperCase();
+        });
+        document.querySelectorAll(".onboard-chips, .profile-chips").forEach((group) => {
+            group.addEventListener("click", (event) => {
+                const chip = event.target.closest(".chip");
+                if (!chip) return;
+                group.querySelectorAll(".chip").forEach((item) => item.classList.remove("is-active"));
+                chip.classList.add("is-active");
+            });
+        });
+        document.querySelectorAll(".setting-chips").forEach((group) => {
+            group.addEventListener("click", (event) => {
+                const chip = event.target.closest(".setting-chip");
+                if (!chip) return;
+                group.querySelectorAll(".setting-chip").forEach((item) => item.classList.remove("is-active"));
+                chip.classList.add("is-active");
+            });
+        });
+        document.querySelectorAll(".profile-tab").forEach((button) => {
+            button.addEventListener("click", () => {
+                document.querySelectorAll(".profile-tab").forEach((item) => item.classList.toggle("is-active", item === button));
+                document.querySelectorAll("[data-profile-pane-body]").forEach((pane) => {
+                    pane.classList.toggle("is-active", pane.dataset.profilePaneBody === button.dataset.profilePane);
+                });
+            });
+        });
+        profileMenu.addEventListener("click", () => {
+            hydrateSavedProfile(savedProfile);
+            profileStatus.textContent = "";
+            profileDrawer.classList.add("is-open");
+        });
+        profileClose.addEventListener("click", () => profileDrawer.classList.remove("is-open"));
+        profileDrawer.addEventListener("click", (event) => {
+            if (event.target === profileDrawer) profileDrawer.classList.remove("is-open");
+        });
+        profileSave.addEventListener("click", async () => {
+            profileSave.disabled = true;
+            profileStatus.textContent = "";
+            try {
+                await saveProfile(collectProfilePayload({ onboardingDone: true }), { toastMessage: "프로필 저장 완료. 다음 답장부터 반영됨." });
+            } catch (error) {
+                profileStatus.textContent = authMessage(error.message);
+            } finally {
+                profileSave.disabled = false;
+            }
+        });
+        profileDelete.addEventListener("click", async () => {
+            if (!window.confirm("말투와 상대 정보를 삭제하고 처음 설정 전 상태로 돌릴까?")) return;
+            profileDelete.disabled = true;
+            try {
+                const result = await apiFetch("/api/profile", { method: "DELETE" });
+                hydrateSavedProfile(result.profile);
+                resetStyleProfile();
+                applySavedProfileToApp();
+                showToast("말투/상대 정보 삭제 완료.");
+            } catch (error) {
+                profileStatus.textContent = authMessage(error.message);
+            } finally {
+                profileDelete.disabled = false;
+            }
+        });
+        logout.addEventListener("click", async () => {
+            await apiFetch("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null);
+            currentUser = null;
+            savedProfile = null;
+            setAppScreen("auth");
+            profileDrawer.classList.remove("is-open");
+        });
+
         document.querySelectorAll(".chips").forEach((group) => {
             group.addEventListener("click", (event) => {
                 const chip = event.target.closest(".chip");
@@ -4633,7 +6093,24 @@ def bootstrap(app, config):
             button.addEventListener("click", () => applyMode(button.dataset.mode));
         });
 
-        applyMode("date");
+        async function bootApp() {
+            setAuthMode("login");
+            renderOnboardPrompt();
+            applyMode("date");
+            try {
+                const result = await apiFetch("/api/session", { method: "GET" });
+                if (result.authenticated) {
+                    await enterSession(result);
+                } else {
+                    setAppScreen("auth");
+                }
+            } catch (error) {
+                authError.textContent = authMessage(error.message);
+                setAppScreen("auth");
+            }
+        }
+
+        bootApp();
     </script>
 </body>
 </html>"""
