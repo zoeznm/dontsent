@@ -910,6 +910,11 @@ def bootstrap(app, config):
             justify-content: center;
         }
 
+        body.auth-mode {
+            height: 100svh;
+            overflow: hidden;
+        }
+
         button,
         input,
         textarea {
@@ -1089,6 +1094,9 @@ def bootstrap(app, config):
                 #101010;
             background-size: 19px 19px, 19px 19px, auto;
             color: #101010;
+            height: 100svh;
+            min-height: 100svh;
+            overflow: hidden;
         }
 
         .phone.auth-state::before {
@@ -1179,6 +1187,15 @@ def bootstrap(app, config):
             padding: max(22px, env(safe-area-inset-top)) 18px 42px;
         }
 
+        .phone.auth-state .auth-screen {
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            align-content: center;
+            padding: max(14px, env(safe-area-inset-top)) 18px max(14px, env(safe-area-inset-bottom));
+            overflow: hidden;
+        }
+
         .auth-card,
         .onboarding-card,
         .profile-card {
@@ -1201,12 +1218,19 @@ def bootstrap(app, config):
         }
 
         .phone.auth-state .auth-card {
-            margin: 34px 0 0;
-            padding: 0;
-            background: #f5efe2;
-            border: 0;
-            border-radius: 3px;
-            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100svh - 32px);
+            margin: 0;
+            padding: clamp(14px, 3.4svh, 22px);
+            background:
+                linear-gradient(90deg, rgba(16, 16, 16, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(16, 16, 16, .08) 1px, transparent 1px),
+                #f5efe2;
+            background-size: 18px 18px, 18px 18px, auto;
+            border: 3px solid #e9ff5c;
+            border-radius: 0;
+            box-shadow: inset 0 0 0 5px #101010;
             overflow: hidden;
         }
 
@@ -1241,12 +1265,14 @@ def bootstrap(app, config):
         }
 
         .phone.auth-state .auth-card::before {
+            left: 0;
             right: 0;
             top: 0;
             z-index: 0;
             width: 100%;
-            height: 58px;
-            background: #101010;
+            height: 38px;
+            background:
+                repeating-linear-gradient(90deg, #e9ff5c 0 12px, #101010 12px 24px);
             border: 0;
             border-radius: 0;
             transform: none;
@@ -1255,13 +1281,14 @@ def bootstrap(app, config):
         .phone.auth-state .auth-card::after {
             content: "";
             position: absolute;
-            left: 16px;
-            right: 16px;
-            bottom: 16px;
+            left: auto;
+            right: 15px;
+            bottom: 15px;
             z-index: 0;
-            height: 42px;
-            background: repeating-linear-gradient(90deg, #101010 0 4px, transparent 4px 8px, #101010 8px 10px, transparent 10px 16px);
-            opacity: .18;
+            width: 58px;
+            height: 118px;
+            background: repeating-linear-gradient(90deg, #101010 0 4px, transparent 4px 8px, #101010 8px 10px, transparent 10px 15px);
+            opacity: .16;
         }
 
         .auth-card h2,
@@ -1282,15 +1309,15 @@ def bootstrap(app, config):
         .phone.auth-state .auth-logo {
             position: relative;
             z-index: 1;
-            width: 46px;
-            height: 46px;
-            margin: 18px 18px 14px;
+            width: 42px;
+            height: 42px;
+            margin: 34px 0 10px;
             background: #e9ff5c;
             border: 0;
-            border-radius: 2px;
+            border-radius: 0;
             color: #101010;
             font-family: "Jua", system-ui, sans-serif;
-            font-size: 25px;
+            font-size: 24px;
             box-shadow: none;
             transform: none;
         }
@@ -1298,22 +1325,23 @@ def bootstrap(app, config):
         .phone.auth-state .auth-card h2 {
             position: relative;
             z-index: 1;
-            margin: 0 18px;
+            margin: 0;
             max-width: 260px;
             font-family: "Jua", ui-rounded, system-ui, sans-serif;
-            font-size: 48px;
+            font-size: clamp(36px, 11svh, 50px);
             font-weight: 950;
-            line-height: .9;
+            line-height: .82;
             text-transform: uppercase;
         }
 
         .phone.auth-state .auth-card > p {
             position: relative;
             z-index: 1;
-            margin: 12px 18px 0;
+            max-width: 280px;
+            margin: 9px 0 0;
             color: #333;
-            font-size: 14px;
-            line-height: 1.42;
+            font-size: clamp(12px, 2.7svh, 14px);
+            line-height: 1.28;
         }
 
         .auth-comic {
@@ -1368,24 +1396,23 @@ def bootstrap(app, config):
             position: relative;
             z-index: 1;
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 0;
-            margin: 18px 0 0;
-            border-top: 2px dashed rgba(16, 16, 16, .38);
-            border-bottom: 2px dashed rgba(16, 16, 16, .38);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 7px;
+            margin: clamp(12px, 2.8svh, 18px) 0 0;
+            border: 0;
         }
 
         .phone.auth-state .auth-comic-panel,
         .phone.auth-state .auth-comic-panel:nth-child(2),
         .phone.auth-state .auth-comic-panel:nth-child(3) {
-            min-height: 64px;
-            padding: 12px 18px;
-            background: transparent;
+            min-height: 58px;
+            padding: 8px 8px 7px;
+            background: #101010;
             border: 0;
-            border-bottom: 1px solid rgba(16, 16, 16, .16);
+            border-bottom: 0;
             border-radius: 0;
             box-shadow: none;
-            color: #101010;
+            color: #f5efe2;
             transform: none;
         }
 
@@ -1397,18 +1424,18 @@ def bootstrap(app, config):
             padding: 0;
             background: transparent;
             border-radius: 0;
-            color: #767061;
-            font-size: 11px;
+            color: #e9ff5c;
+            font-size: 9px;
             letter-spacing: .08em;
         }
 
         .phone.auth-state .auth-comic-panel strong {
-            font-size: 18px;
+            font-size: clamp(13px, 2.9svh, 17px);
+            line-height: 1;
         }
 
         .phone.auth-state .auth-comic-panel span {
-            color: #565145;
-            font-size: 12px;
+            display: none;
         }
 
         .auth-card p,
@@ -1447,18 +1474,18 @@ def bootstrap(app, config):
         .phone.auth-state .auth-tabs {
             position: relative;
             z-index: 1;
-            margin: 18px;
+            margin: clamp(12px, 2.8svh, 18px) 0 0;
             padding: 4px;
             background: #101010;
             border: 0;
-            border-radius: 3px;
+            border-radius: 0;
         }
 
         .phone.auth-state .auth-tab {
-            min-height: 43px;
+            min-height: clamp(36px, 6.2svh, 43px);
             background: transparent;
             border: 0;
-            border-radius: 2px;
+            border-radius: 0;
             color: #f5efe2;
             box-shadow: none;
         }
@@ -1476,8 +1503,8 @@ def bootstrap(app, config):
         .phone.auth-state .auth-form {
             position: relative;
             z-index: 1;
-            gap: 12px;
-            padding: 0 18px 82px;
+            gap: clamp(8px, 1.7svh, 12px);
+            padding: clamp(12px, 2.6svh, 18px) 0 0;
         }
 
         .auth-form input,
@@ -1506,14 +1533,15 @@ def bootstrap(app, config):
         }
 
         .phone.auth-state .auth-form input {
-            padding: 15px 0 10px;
+            min-height: clamp(40px, 7svh, 52px);
+            padding: 12px 0 8px;
             background: transparent;
             border: 0;
             border-bottom: 3px solid #101010;
             border-radius: 0;
             box-shadow: none;
             color: #101010;
-            font-size: 18px;
+            font-size: clamp(15px, 3.7svh, 18px);
         }
 
         .phone.auth-state .auth-form input::placeholder {
@@ -1521,17 +1549,90 @@ def bootstrap(app, config):
         }
 
         .phone.auth-state .auth-form .primary-action {
-            margin-top: 6px;
+            min-height: clamp(44px, 7.5svh, 54px);
+            margin-top: 2px;
             background: #101010;
             border: 0;
-            border-radius: 3px;
+            border-radius: 0;
             color: #f5efe2;
             box-shadow: none;
         }
 
         .phone.auth-state .auth-error {
+            min-height: 16px;
             color: #101010;
-            font-size: 13px;
+            font-size: 12px;
+        }
+
+        @media (max-height: 720px) {
+            .phone.auth-state .auth-screen {
+                padding: max(10px, env(safe-area-inset-top)) 14px max(10px, env(safe-area-inset-bottom));
+            }
+
+            .phone.auth-state .auth-card {
+                max-height: calc(100svh - 20px);
+                padding: 14px;
+            }
+
+            .phone.auth-state .auth-logo {
+                width: 36px;
+                height: 36px;
+                margin: 28px 0 8px;
+                font-size: 21px;
+            }
+
+            .phone.auth-state .auth-card h2 {
+                font-size: 36px;
+            }
+
+            .phone.auth-state .auth-card > p {
+                margin-top: 7px;
+                font-size: 12px;
+                line-height: 1.22;
+            }
+
+            .phone.auth-state .auth-comic {
+                gap: 5px;
+                margin-top: 8px;
+            }
+
+            .phone.auth-state .auth-comic-panel,
+            .phone.auth-state .auth-comic-panel:nth-child(2),
+            .phone.auth-state .auth-comic-panel:nth-child(3) {
+                min-height: 42px;
+                padding: 6px;
+            }
+
+            .phone.auth-state .auth-comic-panel small {
+                font-size: 8px;
+            }
+
+            .phone.auth-state .auth-comic-panel strong {
+                font-size: 13px;
+            }
+
+            .phone.auth-state .auth-tabs {
+                margin-top: 8px;
+            }
+
+            .phone.auth-state .auth-tab {
+                min-height: 36px;
+            }
+
+            .phone.auth-state .auth-form {
+                gap: 7px;
+                padding-top: 8px;
+            }
+
+            .phone.auth-state .auth-form input {
+                min-height: 38px;
+                padding: 8px 0 6px;
+                font-size: 15px;
+            }
+
+            .phone.auth-state .auth-form .primary-action {
+                min-height: 42px;
+            }
         }
 
         .primary-action,
@@ -4177,7 +4278,7 @@ def bootstrap(app, config):
         }
     </style>
 </head>
-<body>
+<body class="auth-mode">
     <main class="phone auth-state" aria-label="RE:BOUND reply generator">
         <section class="auth-screen" id="auth-screen" aria-label="login">
             <div class="auth-card">
@@ -5067,6 +5168,7 @@ def bootstrap(app, config):
             phone.classList.toggle("intro-state", screen === "intro");
             phone.classList.toggle("onboarding-state", screen === "onboarding");
             phone.classList.toggle("app-state", screen === "app");
+            document.body.classList.toggle("auth-mode", screen === "auth");
         }
 
         async function apiFetch(url, options = {}) {
