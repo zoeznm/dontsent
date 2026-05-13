@@ -2,7 +2,6 @@ import os
 import json
 import re
 import importlib.util
-import sqlite3
 import urllib.error
 import urllib.request
 
@@ -14,7 +13,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 DB_CONFIG_PATH = "/opt/app/project/main/config/database.py"
-SQLITE_PATH = os.environ.get("DONTSENT_SQLITE_PATH", "/opt/app/data/dontsent.sqlite3")
 _SCHEMA_READY = False
 
 LABELS = {
@@ -93,17 +91,19 @@ def _load_db_config():
                 "host": getattr(config, "host", ""),
                 "port": getattr(config, "port", 3306),
                 "database": getattr(config, "database", ""),
+                "user": getattr(config, "user", ""),
+                "password": getattr(config, "password", ""),
                 "charset": getattr(config, "charset", "utf8mb4"),
             }
-    user = os.environ.get("DONTSENT_DB_USER", "").strip()
-    password = os.environ.get("DONTSENT_DB_PASSWORD", "")
+    user = os.environ.get("DONTSENT_DB_USER", "").strip() or reference.get("user")
+    password = os.environ.get("DONTSENT_DB_PASSWORD", "") or reference.get("password")
     host = os.environ.get("DONTSENT_DB_HOST", "").strip() or reference.get("host")
     database = os.environ.get("DONTSENT_DB_NAME", "").strip() or reference.get("database")
     port = os.environ.get("DONTSENT_DB_PORT", "").strip() or reference.get("port") or 3306
     charset = os.environ.get("DONTSENT_DB_CHARSET", "").strip() or reference.get("charset") or "utf8mb4"
 
     if not user or not password:
-        return None
+        raise RuntimeError("missing_mysql_credentials")
     if not host or not database:
         raise RuntimeError("missing_app_db_target")
 
@@ -119,55 +119,9 @@ def _load_db_config():
     }
 
 
-def _sqlite_row_factory(cursor, row):
-    return {column[0]: row[index] for index, column in enumerate(cursor.description)}
-
-
-class _SQLiteCursor(sqlite3.Cursor):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, traceback):
-        self.close()
-        return False
-
-    def execute(self, sql, params=None):
-        if params is None:
-            params = ()
-        if isinstance(params, dict):
-            sql = re.sub(r"%\((\w+)\)s", r":\1", sql)
-        else:
-            sql = sql.replace("%s", "?")
-        return super().execute(sql, params)
-
-
-class _SQLiteConnection(sqlite3.Connection):
-    backend = "sqlite"
-
-    def cursor(self, *args, **kwargs):
-        kwargs["factory"] = _SQLiteCursor
-        return super().cursor(*args, **kwargs)
-
-
-def _open_sqlite_db():
-    os.makedirs(os.path.dirname(SQLITE_PATH), exist_ok=True)
-    conn = sqlite3.connect(SQLITE_PATH, timeout=10, factory=_SQLiteConnection)
-    conn.row_factory = _sqlite_row_factory
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
-
-
-def _is_sqlite(conn):
-    return getattr(conn, "backend", "") == "sqlite"
-
-
 def _db():
     global _SCHEMA_READY
-    config = _load_db_config()
-    if config:
-        conn = pymysql.connect(**config)
-    else:
-        conn = _open_sqlite_db()
+    conn = pymysql.connect(**_load_db_config())
     if not _SCHEMA_READY:
         _ensure_schema(conn)
         _SCHEMA_READY = True
@@ -176,48 +130,6 @@ def _db():
 
 def _ensure_schema(conn):
     with conn.cursor() as cursor:
-        if _is_sqlite(conn):
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS dontsent_users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT NOT NULL UNIQUE,
-                    name TEXT NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS dontsent_profiles (
-                    user_id INTEGER NOT NULL PRIMARY KEY,
-                    onboarding_done INTEGER NOT NULL DEFAULT 0,
-                    style_samples TEXT NULL,
-                    style_profile TEXT NULL,
-                    style_tags TEXT NULL,
-                    partner_nickname TEXT NULL,
-                    partner_relation TEXT NULL,
-                    partner_contact TEXT NULL,
-                    partner_mbti TEXT NULL,
-                    partner_age TEXT NULL,
-                    partner_gender TEXT NULL,
-                    partner_job TEXT NULL,
-                    ai_tone TEXT NOT NULL DEFAULT 'balanced',
-                    ai_warmth TEXT NOT NULL DEFAULT 'normal',
-                    ai_directness TEXT NOT NULL DEFAULT 'normal',
-                    ai_playfulness TEXT NOT NULL DEFAULT 'normal',
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            cursor.execute(
-                "CREATE INDEX IF NOT EXISTS idx_dontsent_profiles_onboarding ON dontsent_profiles (onboarding_done)"
-            )
-            conn.commit()
-            return
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS dontsent_users (
@@ -359,42 +271,6 @@ def _save_profile(conn, user_id, payload, onboarding_done=None):
         "ai_playfulness": _clean_text(payload.get("aiPlayfulness"), 80) or "normal",
     }
     with conn.cursor() as cursor:
-        if _is_sqlite(conn):
-            cursor.execute(
-                """
-                INSERT INTO dontsent_profiles (
-                    user_id, onboarding_done, style_samples, style_profile, style_tags,
-                    partner_nickname, partner_relation, partner_contact, partner_mbti,
-                    partner_age, partner_gender, partner_job, ai_tone, ai_warmth,
-                    ai_directness, ai_playfulness
-                )
-                VALUES (
-                    %(user_id)s, %(onboarding_done)s, %(style_samples)s, %(style_profile)s, %(style_tags)s,
-                    %(partner_nickname)s, %(partner_relation)s, %(partner_contact)s, %(partner_mbti)s,
-                    %(partner_age)s, %(partner_gender)s, %(partner_job)s, %(ai_tone)s, %(ai_warmth)s,
-                    %(ai_directness)s, %(ai_playfulness)s
-                )
-                ON CONFLICT(user_id) DO UPDATE SET
-                    onboarding_done=excluded.onboarding_done,
-                    style_samples=excluded.style_samples,
-                    style_profile=excluded.style_profile,
-                    style_tags=excluded.style_tags,
-                    partner_nickname=excluded.partner_nickname,
-                    partner_relation=excluded.partner_relation,
-                    partner_contact=excluded.partner_contact,
-                    partner_mbti=excluded.partner_mbti,
-                    partner_age=excluded.partner_age,
-                    partner_gender=excluded.partner_gender,
-                    partner_job=excluded.partner_job,
-                    ai_tone=excluded.ai_tone,
-                    ai_warmth=excluded.ai_warmth,
-                    ai_directness=excluded.ai_directness,
-                    ai_playfulness=excluded.ai_playfulness,
-                    updated_at=CURRENT_TIMESTAMP
-                """,
-                data,
-            )
-            return
         cursor.execute(
             """
             INSERT INTO dontsent_profiles (
@@ -467,8 +343,13 @@ def _auth_error():
 
 def _db_error(error):
     code = str(error)
-    if code in {"missing_app_db_credentials", "missing_app_db_target"}:
+    if code in {"missing_mysql_credentials", "missing_app_db_credentials", "missing_app_db_target"}:
         return jsonify({"error": code}), 503
+    if isinstance(error, pymysql.err.OperationalError):
+        mysql_code = error.args[0] if error.args else None
+        if mysql_code == 1045:
+            return jsonify({"error": "mysql_access_denied"}), 503
+        return jsonify({"error": "mysql_connection_failed"}), 503
     return jsonify({"error": "database_unavailable"}), 503
 
 
@@ -5146,8 +5027,11 @@ def bootstrap(app, config):
                 email_exists: "이미 가입된 이메일이야.",
                 invalid_credentials: "이메일이나 비밀번호가 안 맞아.",
                 database_unavailable: "DB 연결이 잠깐 안 돼. 설정 확인이 필요해.",
-                missing_app_db_credentials: "저장소 설정이 아직 준비되지 않았어.",
+                missing_mysql_credentials: "MySQL 접속 정보가 아직 준비되지 않았어.",
+                missing_app_db_credentials: "MySQL 접속 정보가 아직 준비되지 않았어.",
                 missing_app_db_target: "앱 DB 대상 정보가 필요해.",
+                mysql_access_denied: "MySQL 계정 권한이 거부됐어. DB 권한 확인이 필요해.",
+                mysql_connection_failed: "MySQL 연결이 실패했어. DB 설정 확인이 필요해.",
                 auth_required: "로그인이 필요해."
             }[code] || "잠깐 삐끗했어. 다시 시도해줘.";
         }
