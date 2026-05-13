@@ -5124,6 +5124,659 @@ def bootstrap(app, config):
             }
         }
 
+        /* Pixel flow pages */
+        .auth-card,
+        .onboarding-card,
+        #style-panel,
+        #profile-panel,
+        #composer,
+        .result-tools:not(.is-empty),
+        .replies:not(.is-empty),
+        .compare-view:not(.is-empty) {
+            image-rendering: pixelated;
+        }
+
+        .phone.auth-state .auth-screen,
+        .phone.onboarding-state .onboarding-screen {
+            background:
+                linear-gradient(90deg, rgba(244, 251, 255, .06) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(244, 251, 255, .06) 1px, transparent 1px),
+                #080b42;
+            background-size: 18px 18px, 18px 18px, auto;
+        }
+
+        .phone.auth-state .auth-card {
+            display: grid;
+            gap: 12px;
+            padding: 56px 18px 18px;
+            background:
+                linear-gradient(90deg, rgba(255, 227, 79, .1) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(255, 227, 79, .1) 1px, transparent 1px),
+                #0b1052;
+            background-size: 16px 16px, 16px 16px, auto;
+            border: 5px solid var(--pixel-white);
+            outline: 4px solid var(--ink);
+            box-shadow: 10px 10px 0 #000;
+        }
+
+        .phone.auth-state .auth-card::before {
+            content: "SAVE SLOT";
+            left: 12px;
+            right: 12px;
+            top: 12px;
+            z-index: 1;
+            width: auto;
+            height: auto;
+            padding: 7px 10px 5px;
+            background: var(--lime);
+            border: 4px solid var(--ink);
+            color: var(--ink);
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1;
+            transform: none;
+        }
+
+        .phone.auth-state .auth-card::after {
+            right: 16px;
+            top: 18px;
+            bottom: auto;
+            z-index: 1;
+            width: 56px;
+            height: 8px;
+            background: repeating-linear-gradient(90deg, var(--pink) 0 8px, transparent 8px 12px, var(--mint) 12px 20px, transparent 20px 24px);
+            opacity: 1;
+        }
+
+        .phone.auth-state .auth-logo {
+            width: 46px;
+            height: 46px;
+            margin: 0;
+            align-self: start;
+            background: var(--orange);
+            border-color: var(--pixel-white);
+            color: var(--pixel-white);
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .phone.auth-state .auth-card h2 {
+            font-size: clamp(44px, 12svh, 64px);
+            line-height: .78;
+            color: var(--lime);
+            text-shadow:
+                5px 0 0 #b85c10,
+                0 5px 0 #b85c10,
+                5px 5px 0 #000;
+        }
+
+        .phone.auth-state .auth-card > p {
+            max-width: none;
+            margin: 0;
+            padding: 10px;
+            background: #05051d;
+            border: 3px solid var(--mint);
+            color: var(--pixel-white);
+            font-size: 13px;
+            line-height: 1.22;
+        }
+
+        .phone.auth-state .auth-comic {
+            grid-template-columns: 1fr;
+            gap: 7px;
+            margin: 0;
+        }
+
+        .phone.auth-state .auth-comic-panel,
+        .phone.auth-state .auth-comic-panel:nth-child(2),
+        .phone.auth-state .auth-comic-panel:nth-child(3) {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 3px 8px;
+            min-height: 0;
+            padding: 8px;
+            background: #101a66;
+            border: 3px solid var(--pixel-white);
+            color: var(--pixel-white);
+        }
+
+        .phone.auth-state .auth-comic-panel small {
+            grid-row: span 2;
+            align-self: center;
+            padding: 4px 5px;
+            background: var(--lime);
+            color: var(--ink);
+            font-size: 9px;
+        }
+
+        .phone.auth-state .auth-comic-panel strong {
+            font-size: 15px;
+        }
+
+        .phone.auth-state .auth-comic-panel span {
+            display: block;
+            color: #b9f8ff;
+            font-size: 11px;
+            line-height: 1.1;
+        }
+
+        .phone.auth-state .auth-tabs {
+            margin: 0;
+            padding: 4px;
+            background: #05051d;
+            border: 4px solid var(--pixel-white);
+        }
+
+        .phone.auth-state .auth-tab {
+            min-height: 42px;
+            color: var(--pixel-white);
+        }
+
+        .phone.auth-state .auth-tab.is-active {
+            background: var(--lime);
+            color: var(--ink);
+        }
+
+        .phone.auth-state .auth-form {
+            gap: 8px;
+            padding: 0;
+        }
+
+        .phone.auth-state .auth-form input {
+            min-height: 44px;
+            border-color: var(--pixel-white);
+            background: #fff9cf;
+            color: var(--ink);
+            font-size: 15px;
+        }
+
+        .phone.auth-state .auth-form .primary-action {
+            min-height: 46px;
+            background: var(--orange);
+            border-color: var(--pixel-white);
+            color: var(--pixel-white);
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        @media (max-height: 720px) {
+            .phone.auth-state .auth-card {
+                gap: 7px;
+                padding: 48px 12px 12px;
+            }
+
+            .phone.auth-state .auth-card::before {
+                padding: 6px 8px 4px;
+                font-size: 12px;
+            }
+
+            .phone.auth-state .auth-logo {
+                width: 34px;
+                height: 34px;
+                font-size: 18px;
+            }
+
+            .phone.auth-state .auth-card h2 {
+                font-size: 34px;
+            }
+
+            .phone.auth-state .auth-card > p {
+                padding: 7px;
+                font-size: 11px;
+                line-height: 1.14;
+            }
+
+            .phone.auth-state .auth-comic-panel,
+            .phone.auth-state .auth-comic-panel:nth-child(2),
+            .phone.auth-state .auth-comic-panel:nth-child(3) {
+                padding: 5px;
+            }
+
+            .phone.auth-state .auth-comic-panel strong {
+                font-size: 13px;
+            }
+
+            .phone.auth-state .auth-comic-panel span {
+                display: none;
+            }
+
+            .phone.auth-state .auth-tab,
+            .phone.auth-state .auth-form input,
+            .phone.auth-state .auth-form .primary-action {
+                min-height: 36px;
+                font-size: 13px;
+            }
+        }
+
+        .phone.onboarding-state .onboarding-screen {
+            display: grid;
+            align-content: center;
+            padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+        }
+
+        .onboarding-card {
+            display: grid;
+            gap: 14px;
+            padding: 48px 16px 16px;
+            background:
+                linear-gradient(90deg, rgba(112, 246, 255, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(112, 246, 255, .08) 1px, transparent 1px),
+                #0b1052;
+            background-size: 16px 16px, 16px 16px, auto;
+            border: 5px solid var(--pixel-white);
+            outline: 4px solid var(--ink);
+            color: var(--pixel-white);
+            box-shadow: 10px 10px 0 #000;
+        }
+
+        .onboarding-card::before {
+            content: "PLAYER SETUP";
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            top: 12px;
+            padding: 7px 10px 5px;
+            background: var(--mint);
+            border: 4px solid var(--ink);
+            color: var(--ink);
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .onboarding-progress {
+            gap: 6px;
+            margin: 0;
+        }
+
+        .onboarding-progress span {
+            height: 14px;
+            background:
+                repeating-linear-gradient(90deg, rgba(244, 251, 255, .24) 0 6px, transparent 6px 10px),
+                #05051d;
+            border: 3px solid var(--pixel-white);
+            border-radius: 0;
+        }
+
+        .onboarding-progress span.is-active {
+            background: repeating-linear-gradient(90deg, var(--lime) 0 10px, var(--orange) 10px 16px);
+        }
+
+        .onboarding-step.is-active {
+            gap: 12px;
+        }
+
+        .onboarding-card h2 {
+            color: var(--lime);
+            font-size: 34px;
+            line-height: .9;
+            text-shadow: 3px 3px 0 #b85c10, 5px 5px 0 #000;
+        }
+
+        .onboarding-card p {
+            margin: 0;
+            color: var(--pixel-white);
+            font-size: 13px;
+            line-height: 1.24;
+        }
+
+        .onboard-prompt,
+        .voice-prompt-card {
+            position: relative;
+            padding: 14px;
+            background: #9ff8ff;
+            color: var(--ink);
+            border: 4px solid var(--pixel-white);
+            outline: 3px solid var(--ink);
+            box-shadow: 5px 5px 0 #000;
+        }
+
+        .onboard-prompt small,
+        .voice-prompt-card span {
+            border: 3px solid var(--ink);
+            background: var(--pink);
+            color: var(--pixel-white);
+        }
+
+        .onboard-prompt strong,
+        .voice-prompt-card p {
+            font-size: 22px;
+            line-height: 1.05;
+        }
+
+        .onboard-answer-list span,
+        .style-answer-pill {
+            background: #fff9cf;
+        }
+
+        .onboard-grid,
+        .profile-grid,
+        .profile-edit-grid {
+            gap: 10px;
+        }
+
+        .onboard-grid label,
+        .profile-edit-grid label,
+        .field {
+            padding: 8px;
+            background: #05051d;
+            border: 3px solid var(--pixel-white);
+            color: var(--lime);
+        }
+
+        .field label,
+        .onboard-grid label,
+        .profile-edit-grid label {
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .onboard-grid input,
+        .profile-edit-grid input,
+        .profile-edit-grid textarea,
+        .field input,
+        .field .select-wrap {
+            margin-top: 6px;
+        }
+
+        .onboarding-card input,
+        .onboarding-card textarea,
+        .profile-card input,
+        .profile-card textarea {
+            border-color: var(--pixel-white);
+        }
+
+        .onboarding-card .panel-title {
+            margin: 2px 0 0;
+            color: var(--mint);
+        }
+
+        .onboarding-card .panel-title::after {
+            background: repeating-linear-gradient(90deg, var(--mint) 0 8px, transparent 8px 12px);
+        }
+
+        .onboarding-card .chip {
+            border-color: var(--pixel-white);
+            background: #05051d;
+            color: var(--pixel-white);
+        }
+
+        .onboarding-card .chip.is-active {
+            background: var(--lime);
+            color: var(--ink);
+        }
+
+        .onboard-actions {
+            grid-template-columns: 1fr;
+        }
+
+        #style-panel,
+        #profile-panel,
+        #composer {
+            padding-top: 46px;
+            overflow: hidden;
+        }
+
+        #style-panel::before,
+        #profile-panel::before,
+        #composer::before,
+        .result-tools:not(.is-empty)::before,
+        .replies:not(.is-empty)::before,
+        .compare-view:not(.is-empty)::before {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            z-index: 2;
+            padding: 7px 9px 5px;
+            border: 4px solid var(--ink);
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        #style-panel {
+            background:
+                linear-gradient(90deg, rgba(244, 251, 255, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(244, 251, 255, .08) 1px, transparent 1px),
+                #25116e;
+            background-size: 16px 16px, 16px 16px, auto;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+        }
+
+        #style-panel::before {
+            content: "VOICE SYNC";
+            background: var(--mint);
+        }
+
+        #profile-panel {
+            background:
+                linear-gradient(90deg, rgba(255, 227, 79, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(255, 227, 79, .08) 1px, transparent 1px),
+                #0d145d;
+            background-size: 16px 16px, 16px 16px, auto;
+            border-color: var(--lime);
+            color: var(--pixel-white);
+        }
+
+        #profile-panel::before {
+            content: "TARGET SCAN";
+            background: var(--lime);
+        }
+
+        #composer {
+            background:
+                linear-gradient(90deg, rgba(255, 63, 142, .1) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(255, 63, 142, .1) 1px, transparent 1px),
+                #2a0d55;
+            background-size: 16px 16px, 16px 16px, auto;
+            border-color: var(--pink);
+            color: var(--pixel-white);
+        }
+
+        #composer::before {
+            content: "REPLY QUEST";
+            background: var(--pink);
+            color: var(--pixel-white);
+        }
+
+        #style-panel .panel-title,
+        #style-panel .hint,
+        #profile-panel .panel-title,
+        #profile-panel .hint,
+        #composer .panel-title {
+            color: var(--pixel-white);
+        }
+
+        #style-panel .panel-title::after,
+        #profile-panel .panel-title::after,
+        #composer .panel-title::after {
+            background: repeating-linear-gradient(90deg, var(--pixel-white) 0 8px, transparent 8px 12px);
+        }
+
+        #style-panel textarea,
+        #composer textarea,
+        #profile-panel input,
+        #profile-panel .select-wrap {
+            border-color: var(--pixel-white);
+        }
+
+        #profile-panel .field {
+            background: #05051d;
+        }
+
+        #profile-panel .field input,
+        #profile-panel .select-wrap {
+            background: #fff9cf;
+            color: var(--ink);
+        }
+
+        #style-panel .style-actions,
+        #composer .actions {
+            gap: 8px;
+        }
+
+        #style-panel .style-next,
+        #style-panel .style-sync,
+        #style-panel .style-clear,
+        #composer .roll,
+        #composer .dice {
+            border-color: var(--pixel-white);
+        }
+
+        #composer .roll {
+            min-height: 60px;
+            background: var(--orange);
+            color: var(--pixel-white);
+        }
+
+        .brief {
+            padding: 8px;
+            background: #05051d;
+            border: 4px solid var(--pixel-white);
+            box-shadow: 6px 6px 0 #000;
+        }
+
+        .brief div {
+            border-color: var(--pixel-white);
+        }
+
+        .result-tools:not(.is-empty),
+        .replies:not(.is-empty),
+        .compare-view:not(.is-empty) {
+            position: relative;
+            padding: 48px 12px 12px;
+            background:
+                linear-gradient(90deg, rgba(255, 227, 79, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(255, 227, 79, .08) 1px, transparent 1px),
+                #05051d;
+            background-size: 16px 16px, 16px 16px, auto;
+            border: 5px solid var(--pixel-white);
+            outline: 4px solid var(--ink);
+            color: var(--pixel-white);
+            box-shadow: 9px 9px 0 #000;
+        }
+
+        .result-tools:not(.is-empty)::before {
+            content: "REPLY REWARD";
+            background: var(--lime);
+        }
+
+        .replies:not(.is-empty)::before {
+            content: "ANSWER CARDS";
+            background: var(--orange);
+        }
+
+        .compare-view:not(.is-empty)::before {
+            content: "COMPARE MODE";
+            background: var(--mint);
+        }
+
+        .result-tools:not(.is-empty) .warning-card,
+        .result-tools:not(.is-empty) .result-panel,
+        .compare-card,
+        .reply {
+            border-color: var(--pixel-white);
+        }
+
+        .result-tools:not(.is-empty) .panel-title,
+        .conference-panel .panel-title {
+            color: var(--pixel-white);
+        }
+
+        .result-tools:not(.is-empty) .panel-title::after,
+        .conference-panel .panel-title::after {
+            background: repeating-linear-gradient(90deg, var(--pixel-white) 0 8px, transparent 8px 12px);
+        }
+
+        .reply {
+            width: 100%;
+            padding: 16px;
+            background: #fff9cf;
+            color: var(--ink);
+        }
+
+        .reply:nth-child(even),
+        .compare-card:nth-child(even) {
+            background: #9ff8ff;
+        }
+
+        .reply strong,
+        .compare-card strong {
+            border: 3px solid var(--ink);
+            background: var(--pink);
+            color: var(--pixel-white);
+        }
+
+        .reply p {
+            font-size: 19px;
+            line-height: 1.22;
+        }
+
+        .reply-copy-state {
+            border-radius: 0;
+            border: 3px solid var(--ink);
+            background: var(--lime);
+            color: var(--ink);
+        }
+
+        .conference-panel {
+            background: #0b1052;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+        }
+
+        .conference-hint {
+            color: var(--pixel-white);
+        }
+
+        .chat-input {
+            border-color: var(--pixel-white);
+        }
+
+        .phone.work-mode #style-panel,
+        .phone.work-mode #profile-panel,
+        .phone.work-mode #composer,
+        .phone.work-mode .result-tools:not(.is-empty),
+        .phone.work-mode .replies:not(.is-empty),
+        .phone.work-mode .compare-view:not(.is-empty) {
+            background:
+                linear-gradient(90deg, rgba(159, 244, 223, .08) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(159, 244, 223, .08) 1px, transparent 1px),
+                #071430;
+            background-size: 16px 16px, 16px 16px, auto;
+            border-color: var(--mint);
+            color: var(--pixel-white);
+            box-shadow: 7px 7px 0 #000;
+        }
+
+        .phone.work-mode #style-panel::before,
+        .phone.work-mode #profile-panel::before,
+        .phone.work-mode #composer::before,
+        .phone.work-mode .result-tools:not(.is-empty)::before,
+        .phone.work-mode .replies:not(.is-empty)::before,
+        .phone.work-mode .compare-view:not(.is-empty)::before {
+            background: var(--mint);
+            color: #06122d;
+        }
+
+        .phone.work-mode #style-panel .panel-title,
+        .phone.work-mode #style-panel .hint,
+        .phone.work-mode #profile-panel .panel-title,
+        .phone.work-mode #profile-panel .hint,
+        .phone.work-mode #composer .panel-title,
+        .phone.work-mode .result-tools:not(.is-empty) .panel-title {
+            color: var(--pixel-white);
+        }
+
+        .phone.work-mode .reply,
+        .phone.work-mode .reply:nth-child(even),
+        .phone.work-mode .compare-card,
+        .phone.work-mode .compare-card:nth-child(even) {
+            background: #f4fbff;
+            color: #06122d;
+            border-color: var(--mint);
+        }
+
         /* Motion removed */
         *,
         *::before,
